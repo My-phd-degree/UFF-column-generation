@@ -1,0 +1,95 @@
+11a12,13
+>     q = data.q
+>     service_time = data.service_time
+17a20
+>     @variable(bwtsp.formulation, y[i in B] >= 0, Int)
+19,20c22,26
+<     @constraint(bwtsp.formulation, deg[i in V], sum(x[e] for e in δ(data, i)) == 2.0)
+<     # println(bwtsp.formulation)
+---
+>     @constraint(bwtsp.formulation, deg[i in W], sum(x[e] for e in δ(data, i)) == 2.0)
+>     @constraint(bwtsp.formulation, hotel_deg[i in B], sum(x[e] for e in δ(data, i)) == 2*y[i])
+>     @constraint(bwtsp.formulation, y[B[1]] >= 1)
+>     # @constraint(bwtsp.formulation, sum(y[i] for i in B) == q)
+>     #println(bwtsp.formulation)
+26c32
+<         L = U = length(B) # max and min number of paths is equal to number of black nodes
+---
+>         L = U = q # max and min number of paths is equal to number of black nodes
+31c37
+<         cap_res_id = add_resource!(G, main=true)
+---
+>         # cap_res_id = add_resource!(G, main=true)
+34,35c40,41
+<             l_i, u_i = 0.0, Float64(Q) # accumulated resource consumption interval [l_i, u_i] for the vertex i
+<             set_resource_bounds!(G, i, cap_res_id, l_i, u_i)
+---
+>             # l_i, u_i = 0.0, Float64(Q) # accumulated resource consumption interval [l_i, u_i] for the vertex i
+>             # set_resource_bounds!(G, i, cap_res_id, l_i, u_i)
+45c51
+<             set_arc_consumption!(G, arc_id, cap_res_id, 0.0)
+---
+>             # set_arc_consumption!(G, arc_id, cap_res_id, 0.0)
+49c55
+<             set_arc_consumption!(G, arc_id, cap_res_id, 0.0)
+---
+>             # set_arc_consumption!(G, arc_id, cap_res_id, 0.0)
+54,59c60,65
+<             q_1 = 0.5
+<             if (i in W) && (j in W)
+<                 q_1 = 1.0
+<             elseif (i in B) && (j in B)
+<                 q_1 = Q
+<             end
+---
+>             # q_1 = 0.5
+>             # if (i in W) && (j in W)
+>             #     q_1 = 1.0
+>             # elseif (i in B) && (j in B)
+>             #     q_1 = Q
+>             # end
+64,65c70,79
+<             set_arc_consumption!(G, arc_id, cap_res_id, q_1)
+<             set_arc_consumption!(G, arc_id, dist_res_id, d(data,(i,j)))
+---
+>             # set_arc_consumption!(G, arc_id, cap_res_id, q_1)
+>             st = 0
+>             if i in W && j in W
+>                st = service_time
+>             elseif i in W || j in W
+>                st = service_time/2
+>             end
+>              
+>             #st = j in W ? service_time : 0.0
+>             set_arc_consumption!(G, arc_id, dist_res_id, d(data,(i,j)) + st)
+69,70c83,85
+<             set_arc_consumption!(G, arc_id, cap_res_id, q_1)
+<             set_arc_consumption!(G, arc_id, dist_res_id, d(data,(i,j)))
+---
+>             # set_arc_consumption!(G, arc_id, cap_res_id, q_1)
+>             #st = i in W ? service_time : 0.0
+>             set_arc_consumption!(G, arc_id, dist_res_id, d(data,(i,j)) + st)
+77c92
+<     # println(G)
+---
+>     #println(G)
+80c95
+<     set_additional_vertex_elementarity_sets!(bwtsp, [(G,[i]) for i in B])
+---
+>     # set_additional_vertex_elementarity_sets!(bwtsp, [(G,[i]) for i in B])
+82c97
+<     define_elementarity_sets_distance_matrix!(bwtsp, G, [[d(data,ed(i, j)) for i in V] for j in V])
+---
+>     define_elementarity_sets_distance_matrix!(bwtsp, G, [[d(data,ed(i, j)) for i in W] for j in W])
+84c99
+<     add_capacity_cut_separator!(bwtsp, [ ([(G, i)], 1.0) for i in W], Float64(Q))
+---
+>     # add_capacity_cut_separator!(bwtsp, [ ([(G, i)], 1.0) for i in W], Float64(Q))
+86a102
+>     set_branching_priority!(bwtsp, "y", 1)
+103,104c119,120
+<         for t in 2:length(B)
+<             maxFlow, flows, cut = SparseMaxFlowMinCut.find_maxflow_mincut(SparseMaxFlowMinCut.Graph(n, g), s, B[t])
+---
+>         for t in W
+>             maxFlow, flows, cut = SparseMaxFlowMinCut.find_maxflow_mincut(SparseMaxFlowMinCut.Graph(n, g), s, t)

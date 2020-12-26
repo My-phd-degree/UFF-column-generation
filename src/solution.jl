@@ -1,0 +1,181 @@
+mutable struct Solution
+    cost::Union{Int,Float64}
+    routes::Array{Array{Int}}
+end
+
+# build Solution from the variables x
+function getsolution(data::DataBWTSP, optimizer::VrpOptimizer, x, objval, app::Dict{String,Any})
+    E, dim = edges(data), dimension(data)
+    adj_list = [[] for i in 1:dim]
+    for e in E
+        val = get_value(optimizer, x[e])
+        if val > 0.5
+            push!(adj_list[e[1]], e[2])
+            push!(adj_list[e[2]], e[1])
+            if val > 1.5
+                push!(adj_list[e[1]], e[2])
+                push!(adj_list[e[2]], e[1])
+            end
+        end
+    end
+    visited, routes = [false for i in 1:dim], []
+    # for j in adj_list
+        i = 1 #j[1]
+        first = i
+        if !visited[i]
+            r, prev = [], first
+            push!(r, i)
+            visited[i] = true
+            length(adj_list[i]) != 2 && i in data.White && error("Problem trying to recover the route from the x values. " *
+                                             "Customer $i has $(length(adj_list[i])) incident edges.")
+            next, prev = (adj_list[i][1] == prev) ? adj_list[i][2] : adj_list[i][1], i
+            maxit, it = dim, 0
+            while next != first && it < maxit
+                length(adj_list[next]) != 2 && next in data.White && error("Problem trying to recover the route from the x values. " *
+                                                   "Customer $next has $(length(adj_list[next])) incident edges.")
+                push!(r, next)
+                visited[next] = true
+                aux = next
+                next, prev = (adj_list[next][1] == prev) ? adj_list[next][2] : adj_list[next][1], aux
+                it += 1
+            end
+            push!(routes, r)
+        end
+    # end
+    length(routes) != 1 && printstyled("Problem trying to recover the route from the x values. " *
+                                       "There are $(length(routes)) subtours in the solution x.\n", color=:red)
+    # if !app["noround"]
+        # objval = trunc(Int, round(objval))
+    # end
+    return Solution(objval, routes)
+end
+
+function print_routes(solution)
+    for (i, r) in enumerate(solution.routes)
+        print("Route #$i: ")
+        for j in r
+            print("$j ")
+        end
+        println()
+    end
+end
+
+# checks the feasiblity of a solution
+ed(i, j) = i < j ? (i, j) : (j, i)
+
+function checksolution(data::DataBWTSP, solution)
+    dim, Q, D = dimension(data), data.Q, data.D
+    visits = [0 for i in 1:dim]
+    sum_cost = 0.0
+    for (i, r) in enumerate(solution.routes)
+        sum_white, sum_dist, prev = 0, 0.0, r[1]
+        visits[r[1]] += 1
+        for j in r[2:end]
+            visits[j] += 1
+            (visits[j] == 2) && error("Customer $j was visited more than once")
+            sum_cost += c(data, ed(prev, j))
+            (j in data.White) ? sum_white += 1 : sum_white = 0
+            (sum_white > Q) && error("Route is violating the limit Q. The maximum number of white is $(sum_white) and Q is $Q")
+            sum_dist = (prev in data.Black) ? 0.0 : sum_dist
+            sum_dist += c(data, ed(prev, j))
+            (sum_dist > D) && error("Route is violating the limit D. Total distance between two black vertices is at least $(sum_dist) and D is $D")
+            prev = j
+        end
+        prev < r[1] ? sum_cost += c(data, (prev, r[1])) : sum_cost += c(data, (r[1], prev))
+    end
+    !isempty(filter(a -> a == 0, visits)) && error("The following vertices were not visited: $(filter(a -> a == 0, visits))")
+    (abs(solution.cost - sum_cost) > 0.001) && error("Cost calculated from the routes ($sum_cost) is different from that passed as" *
+                                                                                                  " argument ($(solution.cost)).")
+end
+
+# read solution from file (CVRPLIB format)
+function readsolution(app::Dict{String,Any})
+    str = read(app["sol"], String)
+    breaks_in = [' '; ':'; '\n';'\t';'\r']
+    aux = split(str, breaks_in; limit=0, keepempty=false)
+    sol = Solution(0, [])
+    j = 3
+    while j <= length(aux)
+        r = []
+        while j <= length(aux)
+            push!(r, parse(Int, aux[j]))
+            j += 1
+            if contains(lowercase(aux[j]), "cost") || contains(lowercase(aux[j]), "route")
+                break
+            end
+        end
+        push!(sol.routes, r)
+        if contains(lowercase(aux[j]), "cost")
+            if app["noround"]
+                sol.cost = parse(Float64, aux[j + 1])
+            else
+                sol.cost = parse(Int, aux[j + 1])
+            end
+            return sol
+        end
+        j += 2 # skip "Route" and "#j:" elements
+    end
+    error("The solution file was not read successfully.")
+    return sol
+end
+
+# write solution in a file
+function writesolution(solpath, solution)
+    open(solpath, "w") do f
+        for (i, r) in enumerate(solution.routes)
+            write(f, "Route #$i: ")
+            for j in r
+                write(f, "$j ")
+            end
+            write(f, "\n")
+        end
+        write(f, "Cost $(solution.cost)\n")
+    end
+end
+
+# write solution as TikZ figure (.tex)
+function drawsolution(tikzpath, data, solution)
+    open(tikzpath, "w") do f
+        write(f, "\\documentclass[crop,tikz]{standalone}\n\\begin{document}\n")
+        # get limits to draw
+        pos_x_vals = [i.pos_x for i in data.G′.V′]
+        pos_y_vals = [i.pos_y for i in data.G′.V′]
+
+        if data.insType == "EUC_2D" || data.insType == "GEO"
+
+            if data.insType == "EUC_2D"
+                scale_fac = 1 / (max(maximum(pos_x_vals), maximum(pos_y_vals)) / 10)
+            elseif data.insType == "GEO"
+                scale_fac = 1 / (max(maximum(pos_x_vals), maximum(pos_y_vals)) / 10)
+            end
+
+            write(f, "\\begin{tikzpicture}[thick, scale=1, every node/.style={scale=0.3}]\n")
+            for i in data.G′.V′
+                x_plot = scale_fac * i.pos_x
+                y_plot = scale_fac * i.pos_y
+                if i.id_vertex in data.Black # plot balck vertices
+                    write(f, "\t\\node[draw, line width=0.1mm, circle, fill=black, inner sep=0.05cm, text=white] (v$(i.id_vertex)) at ($(x_plot),$(y_plot)) {\\footnotesize $(i.id_vertex)};\n")
+                else
+                    write(f, "\t\\node[draw, line width=0.1mm, circle, fill=white, inner sep=0.05cm] (v$(i.id_vertex)) at ($(x_plot),$(y_plot)) {\\footnotesize $(i.id_vertex)};\n")
+                end
+            end
+
+            for r in solution.routes
+                prev = r[1]
+                first = r[1]
+                edge_style = "-,line width=0.8pt"
+                for i in r[2:end]
+                    e = (prev, i)
+                    write(f, "\t\\draw[$(edge_style)] (v$(e[1])) -- (v$(e[2]));\n")
+                    prev = i
+                end
+                write(f, "\t\\draw[$(edge_style)] (v$(first)) -- (v$(prev));\n")
+            end
+
+            write(f, "\\end{tikzpicture}\n")
+            write(f, "\\end{document}\n")
+        else
+            println("Draw funciton for $(data.insType) not defined yet!")
+        end
+    end
+end
