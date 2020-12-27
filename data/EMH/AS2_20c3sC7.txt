@@ -1,0 +1,17 @@
+ID	Type	Longitude	Latitude
+D	d	-77.49439265	37.60851245
+BD12	f	-76.338677	36.796046
+BD20	f	-77.08760885	39.45787498
+BD13	f	-79.156076	37.383343
+C4	c	-74.5248094	37.5
+C5	c	-74.8026882	37.2
+C11	c	-80.1	37.5
+C12	c	-80.2	37.25
+C13	c	-80.4	36.85
+C14	c	-80.1	37.5
+
+Q Vehicle fuel tank capacity /60/
+r fuel consumption rate /0.2/
+TL TourLength /11/
+v average Velocity /40/
+m numVeh /3/
