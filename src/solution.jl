@@ -18,6 +18,9 @@ function getsolution(data::DataGVRP, optimizer::VrpOptimizer, x, objval, app::Di
       end
     end
   end
+  for i in 1:length(adj_list)
+    print(i, ": ", adj_list[i], "\n")
+  end
   visited, routes = [false for i in 1:dim], []
   # for j in adj_list
   i = 1 #j[1]
@@ -68,19 +71,24 @@ function checksolution(data::DataGVRP, solution)
   visits = [0 for i in 1:dim]
   sum_cost = 0.0
   for (i, r) in enumerate(solution.routes)
-    sum_customers, sum_fuel, prev = 0, 0.0, r[1]
+    sum_time, sum_fuel, prev = 0.0, 0.0, r[1]
     visits[r[1]] += 1
     for j in r[2:end]
       visits[j] += 1
-      (visits[j] == 2) && error("Customer $j was visited more than once")
-      sum_cost += c(data, ed(prev, j))
-      (j in data.C) ? sum_customers += 1 : sum_customers = 0
+      j in data.C && visits[j] == 2 && error("Customer $j was visited more than once")
+      sum_cost += d(data, ed(prev, j))
+      sum_time += data.G′.V′[j].service_time + t(data, ed(prev, j))
       sum_fuel = (prev in data.F) ? 0.0 : sum_fuel
-      sum_fuel += c(data, ed(prev, j))
-      (sum_fuel > β) && error("Route is violating the limit D. Total distance between two black vertices is at least $(sum_fuel) and β is $β")
+      sum_fuel += f(data, ed(prev, j))
+      (sum_time > T) && error("Route is violating the limit T. Total time spent is at least $(sum_time) and T is $T")
+      (sum_fuel > β) && error("Route is violating the limit β. Total fuel spent is at least $(sum_fuel) and β is $β")
       prev = j
     end
-    prev < r[1] ? sum_cost += c(data, (prev, r[1])) : sum_cost += c(data, (r[1], prev))
+    if prev != r[1] 
+      sum_cost += c(data, ed(prev, r[1])) 
+      sum_fuel += f(data, ed(prev, r[1]))
+    end
+    print("Route $i (time: $sum_time, fuel: $sum_fuel)\n")
   end
   !isempty(filter(a -> a == 0, visits)) && error("The following vertices were not visited: $(filter(a -> a == 0, visits))")
   (abs(solution.cost - sum_cost) > 0.001) && error("Cost calculated from the routes ($sum_cost) is different from that passed as" *

@@ -51,11 +51,11 @@ function build_model(data::DataGVRP)
         for f in F # setting the arcs between source, sink, and black vertices
             # source -> i(AFS)
             arc_id = add_arc!(G, v_source, f)
-            set_arc_consumption!(G, arc_id, time_res_id, 0.0)
+            set_arc_consumption!(G, arc_id, time_res_id, data.G′.V′[f].service_time/2)
             set_arc_consumption!(G, arc_id, fuel_res_id, 0.0)
             # i(AFS) -> sink
             arc_id = add_arc!(G, f, v_sink)
-            set_arc_consumption!(G, arc_id, time_res_id, data.G′.V′[f].service_time)
+            set_arc_consumption!(G, arc_id, time_res_id, data.G′.V′[f].service_time/2)
             set_arc_consumption!(G, arc_id, fuel_res_id, 0.0)
         end
         for (i, j) in E
@@ -72,13 +72,13 @@ function build_model(data::DataGVRP)
             add_arc_var_mapping!(G, arc_id, x[(i, j)])
              
             set_arc_consumption!(G, arc_id, fuel_res_id, f(data,(i,j)))
-            set_arc_consumption!(G, arc_id, time_res_id, data.G′.V′[i].service_time + t(data,(i,j)))
+            set_arc_consumption!(G, arc_id, time_res_id, ((data.G′.V′[i].service_time + data.G′.V′[j].service_time)/2) + t(data,(i,j)))
             # add arcs j - > i
             arc_id = add_arc!(G, j, i)
             add_arc_var_mapping!(G, arc_id, x[(i, j)])
 
             set_arc_consumption!(G, arc_id, fuel_res_id, f(data,(i,j)))
-            set_arc_consumption!(G, arc_id, time_res_id, data.G′.V′[j].service_time + t(data,(i,j)))
+            set_arc_consumption!(G, arc_id, time_res_id, ((data.G′.V′[i].service_time + data.G′.V′[j].service_time)/2) + t(data,(i,j)))
         end
         return G
     end
@@ -118,7 +118,21 @@ function build_model(data::DataGVRP)
                 set1, set2 = [], []
                 [cut[i] == 1 ? push!(set1, i) : push!(set2, i) for i in 1:n]
 
-                add_dynamic_constr!(gvrp.optimizer, [x[ed(i, j)] for i in set1 for j in set2], [1.0 for i in set1 for j in set2], >=, 2.0, "mincut")
+                setIn = s in set1 ? set2 : set1
+                setOut = s in set1 ? set1 : set2
+
+                lhs_vars = vcat([x[ed(i, j)] for i in setIn for j in setOut], [x[e] for e in E if e[1] in setIn && e[2] in setIn])
+                lhs_coeff = vcat([1.0 for i in setIn for j in setOut], [-2.0 * (d(data, e)/data.ε)/T for e in E if e[1] in setIn && e[2] in setIn])
+
+                rhs = sum(data.G′.V′[i].service_time for i in setIn)/T
+
+                for i in setIn
+                  print(i, ", ")
+                end
+                print(": $rhs \n")
+
+                add_dynamic_constr!(gvrp.optimizer, lhs_vars, lhs_coeff, >=, 2.0 * rhs, "mincut")
+
                 push!(added_cuts, cut)
             end
         end

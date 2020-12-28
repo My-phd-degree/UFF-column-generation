@@ -78,6 +78,7 @@ function run_gvrp(app::Dict{String,Any})
         print_routes(sol)
         #checksolution(data, sol)
         println("Cost $(sol.cost)")
+        checksolution(data, sol)
         if app["out"] != nothing
             writesolution(app["out"], sol)
         end
