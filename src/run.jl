@@ -18,18 +18,6 @@ function parse_commandline(args_array::Array{String,1}, appfolder::String)
             help = "Upper bound (primal bound)"
             arg_type = Float64
             default = 10000000.0
-        "--maxwhite", "-Q"
-            help = "Maximum number of white vertices between two consecutive black vertices"
-            arg_type = Int
-            default = 999
-        "--maxdist", "-D"
-            help = "Total distance between two consecutive black vertices"
-            arg_type = Float64
-            default = 10000000.0
-        "--nblack", "-B"
-            help = "Number of blacks nodes in TSP instance"
-            arg_type = Int
-            default = 999
         "--noround", "-r"
             help = "Does not round the distance matrix"
             action = :store_true
@@ -44,28 +32,20 @@ function parse_commandline(args_array::Array{String,1}, appfolder::String)
             action = :store_true
         "--batch", "-b"
             help = "batch file path"
-        "--nb_days", "-q"
-            help = "Number of visiting days"
-            arg_type = Int
-            default = 999
-        "--service", "-S"
-            help = "Service time in each hotel"
-            arg_type = Float64
-            default = 0.0
     end
    return parse_args(args_array, s)
 end
 
-function run_bwtsp(app::Dict{String,Any})
+function run_gvrp(app::Dict{String,Any})
     println("Application parameters:")
     for (arg, val) in app
         println("  $arg  =>  $(repr(val))")
     end
     flush(stdout)
 
-    instance_name = split(basename(app["instance"]), ".")[1] * "_B_" * string(app["nblack"]) * "_Q_" * string(app["maxwhite"])
+    instance_name = split(basename(app["instance"]), ".")[1] 
 
-    data = readBWTSPData2(app)
+    data = readEMHInstance(app)
 
     if app["sol"] != nothing
         sol = readsolution(app)
@@ -129,10 +109,10 @@ function main(ARGS)
             end
             args_array = [String(s) for s in split(line)]
             app_line = parse_commandline(args_array, appfolder)
-            run_bwtsp(app_line)
+            run_gvrp(app_line)
         end
     else
-        run_bwtsp(app)
+        run_gvrp(app)
     end
 end
 
