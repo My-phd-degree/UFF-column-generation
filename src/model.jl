@@ -121,19 +121,35 @@ function build_model(data::DataGVRP)
                 setIn = s in set1 ? set2 : set1
                 setOut = s in set1 ? set1 : set2
 
-                lhs_vars = vcat([x[ed(i, j)] for i in setIn for j in setOut], [x[e] for e in E if e[1] in setIn && e[2] in setIn])
-                lhs_coeff = vcat([1.0 for i in setIn for j in setOut], [-2.0 * (d(data, e)/data.ε)/T for e in E if e[1] in setIn && e[2] in setIn])
-
                 rhs = sum(data.G′.V′[i].service_time for i in setIn)/T
-
+                
+                print("S: {")
                 for i in setIn
                   print(i, ", ")
                 end
-                print(": $rhs \n")
+                print("}: $rhs \n")
+                print("V\\S: {")
+                for i in setOut
+                  print(i, ", ")
+                end
+                print("}\n")
+
+                #ineq #1
+                lhs_vars = [x[ed(i, j)] for i in setIn for j in setOut]
+                lhs_coeff = [1.0 for i in setIn for j in setOut]
+
+                add_dynamic_constr!(gvrp.optimizer, lhs_vars, lhs_coeff, >=, 2.0 * floor(ceil(rhs)), "mincut")
+
+                push!(added_cuts, cut)
+
+                #ineq #2
+                lhs_vars = vcat(lhs_vars, [x[e] for e in E if !(e[1] in setOut) || !(e[2] in setOut)])
+                lhs_coeff = vcat(lhs_coeff, [-2.0 * (d(data, e)/data.ε)/T for e in E if !(e[1] in setOut) || !(e[2] in setOut)])
 
                 add_dynamic_constr!(gvrp.optimizer, lhs_vars, lhs_coeff, >=, 2.0 * rhs, "mincut")
 
                 push!(added_cuts, cut)
+
             end
         end
         if length(added_cuts) > 0 

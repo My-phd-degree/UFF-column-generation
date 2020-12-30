@@ -33,6 +33,7 @@ function getsolution(data::DataGVRP, optimizer::VrpOptimizer, x, objval, app::Di
                                                      "Customer $i has $(length(adj_list[i])) incident edges.")
     next, prev = (adj_list[i][1] == prev) ? adj_list[i][2] : adj_list[i][1], i
     maxit, it = dim, 0
+    print("($prev, $next), ")
     while next != first && it < maxit
       length(adj_list[next]) != 2 && next in data.C && error("Problem trying to recover the route from the x values. " *
                                                                  "Customer $next has $(length(adj_list[next])) incident edges.")
@@ -41,7 +42,9 @@ function getsolution(data::DataGVRP, optimizer::VrpOptimizer, x, objval, app::Di
       aux = next
       next, prev = (adj_list[next][1] == prev) ? adj_list[next][2] : adj_list[next][1], aux
       it += 1
+      print("($prev, $next), ")
     end
+    print("\n")
     push!(routes, r)
   end
   # end
@@ -85,7 +88,7 @@ function checksolution(data::DataGVRP, solution)
       prev = j
     end
     if prev != r[1] 
-      sum_cost += c(data, ed(prev, r[1])) 
+      sum_cost += d(data, ed(prev, r[1])) 
       sum_fuel += f(data, ed(prev, r[1]))
     end
     print("Route $i (time: $sum_time, fuel: $sum_fuel)\n")
