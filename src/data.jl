@@ -39,8 +39,10 @@ end
 
 # GEO distance
 function GEO_dist(u::Vertex, v::Vertex)
-    return haversine((v.pos_x, v.pos_y), (u.pos_x, u.pos_y), 4182.44949)
-
+    #    return haversine((v.pos_x, v.pos_y), (u.pos_x, u.pos_y), 4182.44949)
+    x_sq = (v.pos_x - u.pos_x)^2
+    y_sq = (v.pos_y - u.pos_y)^2
+    return floor(sqrt(x_sq + y_sq) + 0.5)
 end
 
 contains(p, s) = findnext(s, p, 1) != nothing
@@ -89,6 +91,9 @@ function readEMHInstance(app::Dict{String,Any})
       # Get vehicle average speed
       line = readline(f)
       data.ε = parse(Float64, split(line, ['/']; limit=0, keepempty=false)[2])
+      # Get amount of vehicle
+      line = readline(f)
+      data.m = parse(Float64, split(line, ['/']; limit=0, keepempty=false)[2])
     end
 
     for i in vertices(data)

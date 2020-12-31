@@ -9,6 +9,7 @@ function build_model(data::DataGVRP)
     C = data.C # Set of customers vertices
     F = data.F # Set of AFSs vertices
     T = data.T # Set of AFSs vertices
+    M = data.m
 
     ed(i, j) = i < j ? (i, j) : (j, i)
 
@@ -66,6 +67,9 @@ function build_model(data::DataGVRP)
             # elseif (i in B) && (j in B)
             #     q_1 = Q
             # end
+            if i in F && j in F
+                continue
+            end
 
             # add arcs i - > j
             arc_id = add_arc!(G, i, j)
