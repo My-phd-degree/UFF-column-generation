@@ -9,7 +9,7 @@ function build_model(data::DataGVRP)
     C = data.C # Set of customers vertices
     F = data.F # Set of AFSs vertices
     T = data.T # Set of AFSs vertices
-    M = data.m
+    M = data.m # Qtd of of vehicles
 
     ed(i, j) = i < j ? (i, j) : (j, i)
 

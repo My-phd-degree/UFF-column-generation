@@ -23,6 +23,7 @@ mutable struct DataGVRP
     T::Float64 # Route time limit
     ρ::Float64 # Vehicle fuel comsumption rate
     ε::Float64 # Vehicle average speed
+    m::Float64 # Qtd of vehicles
 end
 
 vertices(data::DataGVRP) = [i.id_vertex for i in data.G′.V′[1:end]] # return set of vertices
@@ -49,7 +50,7 @@ contains(p, s) = findnext(s, p, 1) != nothing
 
 function readEMHInstance(app::Dict{String,Any})
     G′ = InputGraph([], [], Dict())
-    data = DataGVRP(G′, [], [], 0.0, 0.0, 0.0, 0.0)
+    data = DataGVRP(G′, [], [], 0.0, 0.0, 0.0, 0.0,0.0)
 
     open(app["instance"]) do f
       # Ignore header
@@ -91,9 +92,10 @@ function readEMHInstance(app::Dict{String,Any})
       # Get vehicle average speed
       line = readline(f)
       data.ε = parse(Float64, split(line, ['/']; limit=0, keepempty=false)[2])
+      
       # Get amount of vehicle
-      line = readline(f)
-      data.m = parse(Float64, split(line, ['/']; limit=0, keepempty=false)[2])
+      #line = readline(f)
+      #data.m = parse(Float64, split(line, ['/']; limit=0, keepempty=false)[2])
     end
 
     for i in vertices(data)
