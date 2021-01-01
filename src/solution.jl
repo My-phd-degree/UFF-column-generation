@@ -6,50 +6,53 @@ end
 # build Solution from the variables x
 function getsolution(data::DataGVRP, optimizer::VrpOptimizer, x, objval, app::Dict{String,Any})
   E, dim = edges(data), dimension(data)
-  adj_list = [[] for i in 1:dim]
-  for e in E 
-    val = get_value(optimizer, x[e])
-    if val > 0.5
-      push!(adj_list[e[1]], e[2])
-      push!(adj_list[e[2]], e[1])
-      if val > 1.5
+  visited, routes = [false for i in 1:dim], []
+  for k in 1:length(data.C)
+    adj_list = [[] for i in 1:dim]
+    for e in E 
+      val = get_value(optimizer, x[k, e])
+      if val > 0.5
         push!(adj_list[e[1]], e[2])
         push!(adj_list[e[2]], e[1])
+        if val > 1.5
+          push!(adj_list[e[1]], e[2])
+          push!(adj_list[e[2]], e[1])
+        end
       end
     end
-  end
-  for i in 1:length(adj_list)
-    print(i, ": ", adj_list[i], "\n")
-  end
-  visited, routes = [false for i in 1:dim], []
-  # for j in adj_list
-  i = 1 #j[1]
-  first = i
-  if !visited[i]
-    r, prev = [], first
-    push!(r, i)
-    visited[i] = true
-    length(adj_list[i]) != 2 && i in data.C && error("Problem trying to recover the route from the x values. " *
-                                                     "Customer $i has $(length(adj_list[i])) incident edges.")
-    next, prev = (adj_list[i][1] == prev) ? adj_list[i][2] : adj_list[i][1], i
-    maxit, it = dim, 0
-    print("($prev, $next), ")
-    while next != first && it < maxit
-      length(adj_list[next]) != 2 && next in data.C && error("Problem trying to recover the route from the x values. " *
-                                                                 "Customer $next has $(length(adj_list[next])) incident edges.")
-      push!(r, next)
-      visited[next] = true
-      aux = next
-      next, prev = (adj_list[next][1] == prev) ? adj_list[next][2] : adj_list[next][1], aux
-      it += 1
-      print("($prev, $next), ")
+    if length(adj_list[1]) == 0
+      continue
     end
-    print("\n")
-    push!(routes, r)
+    for i in 1:length(adj_list)
+      print(i, ": ", adj_list[i], "\n")
+    end
+    # for j in adj_list
+    i = 1 #j[1]
+    first = i
+    if !visited[i]
+      r, prev = [], first
+      push!(r, i)
+      visited[i] = true
+      length(adj_list[i]) != 2 && i in data.C && error("Problem trying to recover the route from the x values. " *
+                                                       "Customer $i has $(length(adj_list[i])) incident edges.")
+      next, prev = (adj_list[i][1] == prev) ? adj_list[i][2] : adj_list[i][1], i
+      maxit, it = dim, 0
+      print("($prev, $next), ")
+      while next != first && it < maxit
+        length(adj_list[next]) != 2 && next in data.C && error("Problem trying to recover the route from the x values. " *
+                                                               "Customer $next has $(length(adj_list[next])) incident edges.")
+        push!(r, next)
+        visited[next] = true
+        aux = next
+        next, prev = (adj_list[next][1] == prev) ? adj_list[next][2] : adj_list[next][1], aux
+        it += 1
+        print("($prev, $next), ")
+      end
+      print("\n")
+      push!(routes, r)
+    end
+    # end
   end
-  # end
-  length(routes) != 1 && printstyled("Problem trying to recover the route from the x values. " *
-    "There are $(length(routes)) subtours in the solution x.\n", color=:red)
   # if !app["noround"]
   # objval = trunc(Int, round(objval))
   # end
