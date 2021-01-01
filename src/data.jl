@@ -19,6 +19,7 @@ mutable struct DataGVRP
     G′::InputGraph
     F::Array{Int64} # AFSs nodes
     C::Array{Int64} # Customers nodes
+    M::Array{Int64} # Vehicles IDs
     β::Float64 # Total distance between two consecutive black vertices
     T::Float64 # Route time limit
     ρ::Float64 # Vehicle fuel comsumption rate
@@ -50,7 +51,7 @@ contains(p, s) = findnext(s, p, 1) != nothing
 
 function readEMHInstance(app::Dict{String,Any})
     G′ = InputGraph([], [], Dict())
-    data = DataGVRP(G′, [], [], 0.0, 0.0, 0.0, 0.0,0.0)
+    data = DataGVRP(G′, [], [], [], 0.0, 0.0, 0.0, 0.0,0.0)
 
     open(app["instance"]) do f
       # Ignore header
@@ -67,6 +68,7 @@ function readEMHInstance(app::Dict{String,Any})
         v.pos_x = parse(Float64, aux[3])
         v.pos_y = parse(Float64, aux[4])
         push!(G′.V′, v) 
+        
         if aux[2] == "f" || aux[2] == "d"
           # Get AFS
           v.service_time = aux[2] == "f" ? 0.25 : 0
@@ -94,8 +96,10 @@ function readEMHInstance(app::Dict{String,Any})
       data.ε = parse(Float64, split(line, ['/']; limit=0, keepempty=false)[2])
       
       # Get amount of vehicle
-      #line = readline(f)
-      #data.m = parse(Float64, split(line, ['/']; limit=0, keepempty=false)[2])
+      line = readline(f)
+      data.m = parse(Float64, split(line, ['/']; limit=0, keepempty=false)[2])
+      
+      for k in 0:data.m push!(data.M, k) end
     end
 
     for i in vertices(data)
