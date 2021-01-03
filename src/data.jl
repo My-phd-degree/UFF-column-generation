@@ -89,16 +89,14 @@ function readEMHInstance(app::Dict{String,Any})
       data.ρ = parse(Float64, split(line, ['/']; limit=0, keepempty=false)[2])
       # Get vehicle time limit
       line = readline(f)
-#      data.T = parse(Float64, split(line, ['/']; limit=0, keepempty=false)[2])
+      # data.T = parse(Float64, split(line, ['/']; limit=0, keepempty=false)[2])
       data.T = 10.75 
       # Get vehicle average speed
       line = readline(f)
       data.ε = parse(Float64, split(line, ['/']; limit=0, keepempty=false)[2])
-      
       # Get amount of vehicle
       line = readline(f)
       data.m = parse(Float64, split(line, ['/']; limit=0, keepempty=false)[2])
-      
       #data.m = [i in 1:length(C)]
 
       for k in 0:data.m push!(data.M, k) end
