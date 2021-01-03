@@ -4,14 +4,16 @@ function build_model(data::DataGVRP)
     n = nb_vertices(data)
     V = [i for i in 1:n] # set of vertices of the input graph G′
     V′ = [i for i in 0:n] # V ⋃ {0}, where 0 is a dummy vertex
-    M = [k for k in 1:data.m]
-    K = M
 
     β = data.β
     C = data.C # Set of customers vertices
     F = data.F # Set of AFSs vertices
     T = data.T # General time limit
     #M = data.M # Set of vehicles
+    
+    #M = [k for k in 1:data.m]
+    M = [k for k in 1:length(C)]
+    K = M
 
     ed(i, j) = i < j ? (i, j) : (j, i)
 
