@@ -6,6 +6,7 @@ function build_model(data::DataGVRP)
     V′ = [i for i in 0:n] # V ⋃ {0}, where 0 is a dummy vertex
     M = [k for k in 0:data.m]
 
+    #data.n
     β = data.β
     C = data.C # Set of customers vertices
     F = data.F # Set of AFSs vertices
@@ -17,12 +18,11 @@ function build_model(data::DataGVRP)
     # Formulation
     gvrp = VrpModel()
     @variables(gvrp.formulation, begin
-                 x[i in V , j in V, k in M], Int
-                 y[i in F] >= 0, Int
+                 0 <= x[i in V , j in V, k in M] <= 1, Int
                end)
 
     #print(d(data, e for e in E ))
-    @objective(gvrp.formulation, Min, sum( data.G′.cost[e] * x[i,j,k] for i in V, j in V, k in M, e in E ) )
+    @objective(gvrp.formulation, Min, sum( data.G′.cost[ed(i, j)] * x[i,j,k] for i in V, j in V, k in M , if i != j ) )
     #d(data, e for e in E )
     #data.G′.cost[e]
 
@@ -70,7 +70,9 @@ function build_model(data::DataGVRP)
         end
 
         for k in M
-            for (i, j) in E
+            for i in V
+                for j in V
+
                 # resource comsuption for the R = 1 
                 # q_1 = 0.5
                 # if (i in W) && (j in W)
@@ -78,7 +80,7 @@ function build_model(data::DataGVRP)
                 # elseif (i in B) && (j in B)
                 #     q_1 = Q
                 # end
-                if i in F && j in F
+                if i in F && j in F 
                     continue
                 end
 
@@ -89,11 +91,13 @@ function build_model(data::DataGVRP)
                 set_arc_consumption!(G, arc_id, fuel_res_id, f(data,(i,j)))
                 set_arc_consumption!(G, arc_id, time_res_id, ((data.G′.V′[i].service_time + data.G′.V′[j].service_time)/2) + t(data,(i,j)))
                 # add arcs j - > i
+                
                 arc_id = add_arc!(G, j, i)
                 add_arc_var_mapping!(G, arc_id, x[i, j, k])
 
                 set_arc_consumption!(G, arc_id, fuel_res_id, f(data,(i,j)))
                 set_arc_consumption!(G, arc_id, time_res_id, ((data.G′.V′[i].service_time + data.G′.V′[j].service_time)/2) + t(data,(i,j)))
+                end
             end
         end
 

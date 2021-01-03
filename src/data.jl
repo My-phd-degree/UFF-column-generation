@@ -99,6 +99,8 @@ function readEMHInstance(app::Dict{String,Any})
       line = readline(f)
       data.m = parse(Float64, split(line, ['/']; limit=0, keepempty=false)[2])
       
+      #data.m = [i in 1:length(C)]
+
       for k in 0:data.m push!(data.M, k) end
     end
 
