@@ -24,7 +24,7 @@ mutable struct DataGVRP
     T::Float64 # Route time limit
     ρ::Float64 # Vehicle fuel comsumption rate
     ε::Float64 # Vehicle average speed
-    m::Float64 # Qtd of vehicles
+    m::Int64 # Qtd of vehicles
 end
 
 vertices(data::DataGVRP) = [i.id_vertex for i in data.G′.V′[1:end]] # return set of vertices
