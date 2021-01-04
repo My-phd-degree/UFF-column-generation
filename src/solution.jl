@@ -7,52 +7,47 @@ end
 function getsolution(data::DataGVRP, optimizer::VrpOptimizer, x, objval, app::Dict{String,Any})
   E, dim = edges(data), dimension(data)
   visited, routes = [false for i in 1:dim], []
-  for k in 1:length(data.C)
-    adj_list = [[] for i in 1:dim]
-    for e in E 
-      val = get_value(optimizer, x[k, e])
-      if val > 0.5
+  adj_list = [[] for i in 1:dim]
+  for e in E 
+    val = get_value(optimizer, x[e])
+    if val > 0.5
+      push!(adj_list[e[1]], e[2])
+      push!(adj_list[e[2]], e[1])
+      if val > 1.5
         push!(adj_list[e[1]], e[2])
         push!(adj_list[e[2]], e[1])
-        if val > 1.5
-          push!(adj_list[e[1]], e[2])
-          push!(adj_list[e[2]], e[1])
-        end
       end
     end
-    if length(adj_list[1]) == 0
-      continue
-    end
-    for i in 1:length(adj_list)
-      print(i, ": ", adj_list[i], "\n")
-    end
-    # for j in adj_list
-    i = 1 #j[1]
-    first = i
-    if !visited[i]
-      r, prev = [], first
-      push!(r, i)
-      visited[i] = true
-      length(adj_list[i]) != 2 && i in data.C && error("Problem trying to recover the route from the x values. " *
-                                                       "Customer $i has $(length(adj_list[i])) incident edges.")
-      next, prev = (adj_list[i][1] == prev) ? adj_list[i][2] : adj_list[i][1], i
-      maxit, it = dim, 0
-      print("($prev, $next), ")
-      while next != first && it < maxit
-        length(adj_list[next]) != 2 && next in data.C && error("Problem trying to recover the route from the x values. " *
-                                                               "Customer $next has $(length(adj_list[next])) incident edges.")
-        push!(r, next)
-        visited[next] = true
-        aux = next
-        next, prev = (adj_list[next][1] == prev) ? adj_list[next][2] : adj_list[next][1], aux
-        it += 1
-        print("($prev, $next), ")
-      end
-      print("\n")
-      push!(routes, r)
-    end
-    # end
   end
+  for i in 1:length(adj_list)
+    print(i, ": ", adj_list[i], "\n")
+  end
+  # for j in adj_list
+  i = 1 #j[1]
+  first = i
+  if !visited[i]
+    r, prev = [], first
+    push!(r, i)
+    visited[i] = true
+    length(adj_list[i]) != 2 && i in data.C && error("Problem trying to recover the route from the x values. " *
+                                                     "Customer $i has $(length(adj_list[i])) incident edges.")
+    next, prev = (adj_list[i][1] == prev) ? adj_list[i][2] : adj_list[i][1], i
+    maxit, it = dim, 0
+    print("($prev, $next), ")
+    while next != first && it < maxit
+      length(adj_list[next]) != 2 && next in data.C && error("Problem trying to recover the route from the x values. " *
+                                                             "Customer $next has $(length(adj_list[next])) incident edges.")
+      push!(r, next)
+      visited[next] = true
+      aux = next
+      next, prev = (adj_list[next][1] == prev) ? adj_list[next][2] : adj_list[next][1], aux
+      it += 1
+      print("($prev, $next), ")
+    end
+    print("\n")
+    push!(routes, r)
+  end
+  # end
   # if !app["noround"]
   # objval = trunc(Int, round(objval))
   # end
@@ -83,10 +78,10 @@ function checksolution(data::DataGVRP, solution)
       visits[j] += 1
       j in data.C && visits[j] == 2 && error("Customer $j was visited more than once")
       sum_cost += d(data, ed(prev, j))
-      sum_time += data.G′.V′[j].service_time + t(data, ed(prev, j))
+      sum_time += t(data, ed(prev, j))
       sum_fuel = (prev in data.F) ? 0.0 : sum_fuel
       sum_fuel += f(data, ed(prev, j))
-      (sum_time > T) && error("Route is violating the limit T. Total time spent is at least $(sum_time) and T is $T")
+      (sum_time > T) && error("Route $r is violating the limit T. Total time spent is at least $(sum_time) and T is $T")
       (sum_fuel > β) && error("Route is violating the limit β. Total fuel spent is at least $(sum_fuel) and β is $β")
       prev = j
     end

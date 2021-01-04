@@ -34,7 +34,7 @@ function distance(data::DataGVRP, e::Tuple{Int64,Int64})
   u, v = e 
   vertices = data.G′.V′
   # array <vertices> is indexed from 1 (depot is vertices[1], customer 1 is vertices[2], and so on)
-  return haversine((v.pos_x, v.pos_y), (u.pos_x, u.pos_y), 4182.44949)
+  return haversine((vertices[v].pos_x, vertices[v].pos_y), (vertices[u].pos_x, vertices[u].pos_y), 4182.44949)
 end
 
 # EUC_2D distance
@@ -85,16 +85,29 @@ function readEMHInstance(app::Dict{String,Any})
       data.ρ = parse(Float64, split(line, ['/']; limit=0, keepempty=false)[2])
       # Get vehicle time limit
       line = readline(f)
-#      data.T = parse(Float64, split(line, ['/']; limit=0, keepempty=false)[2])
       data.T = 10.75 
       # Get vehicle average speed
       line = readline(f)
       data.ε = parse(Float64, split(line, ['/']; limit=0, keepempty=false)[2])
     end
 
+    #read preprocessings
+    invalidEdges = []
+    if haskey(app, "preprocessings") && app["preprocessings"] != nothing
+      open(app["preprocessings"]) do f
+        while !eof(f)
+          # read edge
+          line = readline(f)
+          edge = split(line, [' ', ',']; limit=0, keepempty=false)
+          push!(invalidEdges, (parse(Int, edge[1]) + 1, parse(Int, edge[2]) + 1))
+        end
+      end
+    end
+
+    # create edges
     for i in vertices(data)
       for j in vertices(data) # add arcs between vertices
-        if i < j
+        if i < j && !((i, j) in invalidEdges)
           e = (i, j)
           push!(G′.E, e) # add edge e
           data.G′.cost[e] = distance(data, e)
@@ -167,20 +180,32 @@ function readMatheusInstance(app::Dict{String,Any})
       end
     end
 
+    #read preprocessings
+    invalidEdges = []
+    if haskey(app, "preprocessings") && app["preprocessings"] != nothing
+      open(app["preprocessings"]) do f
+        while !eof(f)
+          # read edge
+          line = readline(f)
+          edge = split(line, [' ', ',']; limit=0, keepempty=false)
+          push!(invalidEdges, (parse(Int, edge[1]) + 1, parse(Int, edge[2]) + 1))
+        end
+      end
+    end
+
     for i in vertices(data)
       for j in vertices(data) # add arcs between vertices
-        if i < j
-          e = (i, j)
-          vertices = data.G′.V′
+        e = (i, j)
+        a, b = data.G′.V′[i], data.G′.V′[j]
+        if i < j && !((a.id_vertex, b.id_vertex) in invalidEdges)
           push!(G′.E, e) # add edge e
-          data.G′.cost[e] = EUC_dist(vertices[e[1]], vertices[e[2]])
+          data.G′.cost[e] = EUC_dist(a, b)
         end
       end
     end
 
     return data
 end
-
 
 edges(data::DataGVRP) = data.G′.E # return set of arcs
 d(data,e) = (e[1] != e[2]) ? data.G′.cost[e] : 0.0 # cost of the edge e
@@ -191,8 +216,5 @@ nb_vertices(data::DataGVRP) = length(vertices(data))
 
 # return incident edges of i
 function δ(data::DataGVRP, i::Integer)
-    incident_edges = Vector{Tuple}()
-    for j in 1:i - 1 push!(incident_edges, (j, i)) end
-    for j in i + 1:(length(data.G′.V′)) push!(incident_edges, (i, j)) end
-    return incident_edges
+    return vcat([(j, i) for j in 1:i - 1 if (j, i) in data.G′.E], [(i, j) for j in i + 1:(length(data.G′.V′)) if (i, j) in data.G′.E])
 end
