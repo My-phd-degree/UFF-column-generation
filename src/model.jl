@@ -108,6 +108,22 @@ function build_model(data::DataGVRP)
 
   ed(i, j) = i < j ? (i, j) : (j, i)
 
+  println("Customers ")
+  for i in data.C
+    println(i, " ", data.G′.V′[i], ", δ($i) = $(δ(data, i))")
+  end
+  println("AFSs ")
+  for i in data.F
+    println(i, " ", data.G′.V′[i], ", δ($i) = $(δ(data, i))")
+  end
+  println("β: $β")
+  println("T: $T")
+  println("ρ: $(data.ρ)")
+  println("ε: $(data.ε)")
+  println("E: ", length(E))
+  for (i, j) in E
+    println("d(($i, $j)) = ", d(data, (i, j)), " f(($i, $j)) = ", f(data, (i, j)), " t(($i, $j)) = ", t(data, (i, j)))
+  end
   
   # Formulation
   gvrp = VrpModel()
@@ -135,7 +151,7 @@ function build_model(data::DataGVRP)
     time_res_id = add_resource!(G, main=true)
     fuel_res_id = add_resource!(G, main=true)
     for i in V′
-      l_i_fuel, u_i_fuel = 0.0, β 
+      l_i_fuel, u_i_fuel = 0.0, β
       set_resource_bounds!(G, i, fuel_res_id, l_i_fuel, u_i_fuel)
       l_i_time, u_i_time = 0.0, T
       set_resource_bounds!(G, i, time_res_id, l_i_time, u_i_time)
@@ -153,20 +169,29 @@ function build_model(data::DataGVRP)
       set_arc_consumption!(G, arc_id, fuel_res_id, 0.0)
     end
     for (i, j) in E
-      if i in F && j in F && i != F[1] && j != F[1]
-        continue
-      end
       # add arcs i - > j
       arc_id = add_arc!(G, i, j)
       add_arc_var_mapping!(G, arc_id, x[(i, j)])
 
-      set_arc_consumption!(G, arc_id, fuel_res_id, f(data,(i,j)))
+      if i in F && j in F && i != F[1] && j != F[1]
+        set_arc_consumption!(G, arc_id, fuel_res_id, β + 1)
+      elseif i in F && j in F && i == F[1] || j == F[1]
+        set_arc_consumption!(G, arc_id, fuel_res_id,  - f(data,(i,j)))
+      else
+        set_arc_consumption!(G, arc_id, fuel_res_id,  f(data,(i,j)))
+      end
       set_arc_consumption!(G, arc_id, time_res_id, t(data,(i,j)))
       # add arcs j - > i
       arc_id = add_arc!(G, j, i)
       add_arc_var_mapping!(G, arc_id, x[(i, j)])
 
-      set_arc_consumption!(G, arc_id, fuel_res_id, f(data,(i,j)))
+      if i in F && j in F && i != F[1] && j != F[1]
+        set_arc_consumption!(G, arc_id, fuel_res_id, β + 1)
+      elseif i in F && j in F && i == F[1] || j == F[1]
+        set_arc_consumption!(G, arc_id, fuel_res_id,  - f(data,(i,j)))
+      else
+        set_arc_consumption!(G, arc_id, fuel_res_id,  f(data,(i,j)))
+      end
       set_arc_consumption!(G, arc_id, time_res_id, t(data,(i,j)))
     end
     return G
@@ -208,12 +233,14 @@ function build_model(data::DataGVRP)
         set1, set2 = [], []
         [cut[i] == 1 ? push!(set1, i) : push!(set2, i) for i in 1:n]
         setIn = c in set1 ? set1 : set2
-        lhs_vars = vcat([x[ed(i, j)] for i in set2 for j in set1 if ed(i, j) in data.G′.E], [x[e] for e in E if e[1] in setIn || e[2] in setIn])
-        lhs_coeff = vcat([1.0 for i in set2 for j in set1 if ed(i, j) in data.G′.E], [- t(data, e) * 2/T for e in E if e[1] in setIn || e[2] in setIn])
+#        lhs_vars = vcat([x[ed(i, j)] for i in set2 for j in set1 if ed(i, j) in data.G′.E], [x[e] for e in E if e[1] in setIn || e[2] in setIn])
+#        lhs_coeff = vcat([1.0 for i in set2 for j in set1 if ed(i, j) in data.G′.E], [- t(data, e) * 2/T for e in E if e[1] in setIn || e[2] in setIn])
+        lhs_vars = [x[ed(i, j)] for i in set2 for j in set1 if ed(i, j) in data.G′.E]
+        lhs_coeff = [1.0 for i in set2 for j in set1 if ed(i, j) in data.G′.E]
 
         #                add_dynamic_constr!(gvrp.optimizer, lhs_vars, lhs_coeff, >=, 2.0 * floor(ceil(sum(data.G′.V′[i].service_time for i in (c in set1 ? set1 : set2) if i in C)/T)), "mincut")
-        add_dynamic_constr!(gvrp.optimizer, lhs_vars, lhs_coeff, >=, 0.0, "mincut")
-        #                add_dynamic_constr!(gvrp.optimizer, lhs_vars, lhs_coeff, >=, 2.0, "mincut")
+#        add_dynamic_constr!(gvrp.optimizer, lhs_vars, lhs_coeff, >=, 0.0, "mincut")
+        add_dynamic_constr!(gvrp.optimizer, lhs_vars, lhs_coeff, >=, 2.0, "mincut")
 
         push!(added_cuts, cut)
       end
@@ -225,8 +252,13 @@ function build_model(data::DataGVRP)
   add_cut_callback!(gvrp, maxflow_mincut_callback, "mincut")
 
   function maxflow_mincut_time_callback()
+    """
     # solve model
-    M = Model(solver = CplexSolver())
+    M = Model(solver = CplexSolver(
+                                  
+                                   CPX_PARAM_MIPDISPLAY=0,
+                                   CPX_PARAM_SCRIND=0
+                                  ))
     @variable(M, 0 <= y[1:n] <= 1, Int)
     @variable(M, 0 <= w[e in E] <= 1, Int)
     @variable(M, 0 <= z[e in E] <= 1, Int)
@@ -265,6 +297,41 @@ function build_model(data::DataGVRP)
 
       add_dynamic_constr!(gvrp.optimizer, lhs_vars, lhs_coeff, >=, 0.0, "mincuttime")
       println(">>>>> Add min cuts time: ", 1, " cut(s) added") 
+    end
+    """
+    M = 100000
+    # for all routes
+    g = SparseMaxFlowMinCut.ArcFlow[]
+    for (i, j) in E
+      e = (i, j)
+      value::Float64 = get_value(gvrp.optimizer, x[e])
+      if value > 0.0001
+        flow_::Int = trunc(floor(value, digits=5) * M)
+        push!(g, SparseMaxFlowMinCut.ArcFlow(i, j, flow_)) # arc i -> j
+        push!(g, SparseMaxFlowMinCut.ArcFlow(j, i, flow_)) # arc j -> i
+      end
+    end
+
+    added_cuts = []
+    s = F[1]
+    for c in C
+      maxFlow, flows, cut = SparseMaxFlowMinCut.find_maxflow_mincut(SparseMaxFlowMinCut.Graph(n, g), s, c)
+      set1, set2 = [], []
+      [cut[i] == 1 ? push!(set1, i) : push!(set2, i) for i in 1:n]
+      setIn = c in set1 ? set1 : set2
+      setOut = c in set1 ? set2 : set1
+      if (maxFlow/M) + 0.001 < 2 * sum(get_value(gvrp.optimizer, x[(i, j)]) * t(data, (i, j)) for (i, j) in E if i in setIn || j in setIn)/T  && !in(cut, added_cuts)
+        println(setIn, " maxflow: ", (maxFlow/M), " cut:", 2 * sum(get_value(gvrp.optimizer, x[(i, j)]) * t(data, (i, j)) for (i, j) in E if i in setIn || j in setIn)/T)
+        lhs_vars = vcat([x[(i, j)] for i in set2 for j in set1 if (i, j) in E], [x[(i, j)] for (i, j) in E if i in setIn || j in setIn])
+        lhs_coeff = vcat([1.0 for i in set2 for j in set1 if (i, j) in E], [- 2 * t(data, (i, j))/T for (i, j) in E if i in setIn || j in setIn])
+
+        add_dynamic_constr!(gvrp.optimizer, lhs_vars, lhs_coeff, >=, 0.0, "mincuttime")
+
+        push!(added_cuts, cut)
+      end
+    end
+    if length(added_cuts) > 0 
+      println(">>>>> Add min cuts : ", length(added_cuts), " cut(s) added") 
     end
   end
   add_cut_callback!(gvrp, maxflow_mincut_time_callback, "mincuttime")

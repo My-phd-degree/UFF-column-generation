@@ -3,6 +3,9 @@ mutable struct Solution
   routes::Array{Array{Int}}
 end
 
+function get_routes(adj_matrix::Array, data::DataGVRP)
+end
+
 # build Solution from the variables x
 function getsolution(data::DataGVRP, optimizer::VrpOptimizer, x, objval, app::Dict{String,Any})
   E, dim = edges(data), dimension(data)
@@ -19,6 +22,7 @@ function getsolution(data::DataGVRP, optimizer::VrpOptimizer, x, objval, app::Di
       end
     end
   end
+  print(adj_list)
   for i in 1:length(adj_list)
     print(i, ": ", adj_list[i], "\n")
   end
@@ -74,6 +78,7 @@ function checksolution(data::DataGVRP, solution)
   for (i, r) in enumerate(solution.routes)
     sum_time, sum_fuel, prev = 0.0, 0.0, r[1]
     visits[r[1]] += 1
+    println(r)
     for j in r[2:end]
       visits[j] += 1
       j in data.C && visits[j] == 2 && error("Customer $j was visited more than once")
@@ -81,6 +86,7 @@ function checksolution(data::DataGVRP, solution)
       sum_time += t(data, ed(prev, j))
       sum_fuel = (prev in data.F) ? 0.0 : sum_fuel
       sum_fuel += f(data, ed(prev, j))
+      println(j)
       (sum_time > T) && error("Route $r is violating the limit T. Total time spent is at least $(sum_time) and T is $T")
       (sum_fuel > β) && error("Route is violating the limit β. Total fuel spent is at least $(sum_fuel) and β is $β")
       prev = j
