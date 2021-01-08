@@ -252,7 +252,6 @@ function build_model(data::DataGVRP)
   add_cut_callback!(gvrp, maxflow_mincut_callback, "mincut")
 
   function maxflow_mincut_time_callback()
-    """
     # solve model
     M = Model(solver = CplexSolver(
                                   
@@ -333,7 +332,7 @@ function build_model(data::DataGVRP)
     if length(added_cuts) > 0 
       println(">>>>> Add min cuts : ", length(added_cuts), " cut(s) added") 
     end
+    """
   end
   add_cut_callback!(gvrp, maxflow_mincut_time_callback, "mincuttime")
   return (gvrp, x)
-end
