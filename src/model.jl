@@ -27,19 +27,19 @@ function build_model(data::DataGVRP)
     @objective(gvrp.formulation, Min, sum( data.G′.cost[ed(i, j)] * x[i,j,k] for i in V, j in V, k in M if i != j ) )
 
     @constraints(gvrp.formulation, begin
-                  deg6_2[k in M], sum(x[1,j,k] for j in V if j!=1 ) <= 1.0
+                  deg_6_2[k in M], sum(x[1,j,k] for j in V if j!=1 ) <= 1.0
 
-                  deg6_3[k in M, i in V], sum(x[i,j,k] for j in V if j!=i ) == sum(x[j,i,k] for j in V if j!=i)
+                  deg_6_3[k in M, i in V], sum(x[i,j,k] for j in V if j!=i ) == sum(x[j,i,k] for j in V if j!=i)
 
-                  deg6_4[i in C], sum( x[i,j,k] for j in V, k in M if j!=i ) == 1.0
+                  deg_6_4[i in C], sum( x[i,j,k] for j in V, k in M if j!=i ) == 1.0
 
-                  deg6_6[i in C, j in C, k in M], e[j] <= e[i] - f(data, ed(i, j))*x[i,j,k] + data.β*(1.0 - x[i,j,k]) + f(data, ed(j, i))*x[j,i,k]
+                  deg_6_6[i in C, j in C, k in M], e[j] <= e[i] - f(data, ed(i, j))*x[i,j,k] + data.β*(1.0 - x[i,j,k]) + f(data, ed(j, i))*x[j,i,k]
 
-                  #deg6_7_1[j in C],  sum( f(data, ed(f, j))*x[f,j,k] for k in M , f in F ) - data.β + e[j] - data.β <= 0.0
+                  deg_6_7_1[j in C],  sum( f(data, ed(f, j))*x[f,j,k] for k in M , f in F ) - data.β + e[j] - data.β <= 0.0
                   
-                  #deg6_7_2[j in C], e[j] - sum( f(data, ed(j, f))*x[j,f,k] for k in M , f in F ) <= 0.0
+                  deg_6_7_2[j in C], e[j] - sum( f(data, ed(j, f))*x[j,f,k] for k in M , f in F ) <= 0.0
 
-                  deg6_9[k in M], sum(x[i, j, k] * (t(data, ed(i, j)) + data.G′.V′[i].service_time) for i in V, j in V if i!=j) <= T
+                  deg_6_9[k in M], sum(x[i, j, k] * (t(data, ed(i, j)) + data.G′.V′[i].service_time) for i in V, j in V if i!=j) <= T
 
                   #prepro[e in L, k in M], x[e[1], e[2], k] == 0
                 end)
@@ -48,7 +48,6 @@ function build_model(data::DataGVRP)
 
     # Build the model directed graph G=(V,A)
     function build_graph(k::Int64)
-        print("here\n")
         v_source = v_sink = 0
         L = U = length(F) # max and min number of paths is equal to number of AFSs
 

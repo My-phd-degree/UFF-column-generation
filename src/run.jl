@@ -45,7 +45,8 @@ function run_gvrp(app::Dict{String,Any})
 
     instance_name = split(basename(app["instance"]), ".")[1] 
 
-    data = readEMHInstance(app)
+    #data = readEMHInstance(app)
+    data = readMatheusInstance(app)
 
     if app["sol"] != nothing
         sol = readsolution(app)
