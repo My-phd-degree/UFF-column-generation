@@ -21,7 +21,7 @@ function build_model(data::DataGVRP)
     gvrp = VrpModel()
     @variables(gvrp.formulation, begin
                  0 <= x[i in V , j in V, k in M] <= 1, Int
-                 0 <= e[i in C] <= data.β 
+                 0 <= e[i in C] <= data.β
                end)
 
     @objective(gvrp.formulation, Min, sum( data.G′.cost[ed(i, j)] * x[i,j,k] for i in V, j in V, k in M if i != j ) )
@@ -35,9 +35,9 @@ function build_model(data::DataGVRP)
 
                   deg_6_6[i in C, j in C, k in M], e[j] <= e[i] - f(data, ed(i, j))*x[i,j,k] + data.β*(1.0 - x[i,j,k]) + f(data, ed(j, i))*x[j,i,k]
 
-                  deg_6_7_1[j in C],  sum( f(data, ed(f, j))*x[f,j,k] for k in M , f in F ) - data.β + e[j] - data.β <= 0.0
+                  #deg_6_7_1[j in C],  e[j] <= data.β - sum( f(data, ed(f, j))*x[f,j,k] for k in M , f in F )
                   
-                  deg_6_7_2[j in C], e[j] - sum( f(data, ed(j, f))*x[j,f,k] for k in M , f in F ) <= 0.0
+                  #deg_6_7_2[j in C],  sum( f(data, ed(j, f))*x[j,f,k] for k in M , f in F ) <= e[j]
 
                   deg_6_9[k in M], sum(x[i, j, k] * (t(data, ed(i, j)) + data.G′.V′[i].service_time) for i in V, j in V if i!=j) <= T
 
@@ -88,22 +88,33 @@ function build_model(data::DataGVRP)
                 # elseif (i in B) && (j in B)
                 #     q_1 = Q
                 # end
-                if i in F && j in F && i != 1 && j != 1 || i==j
-                  continue
-                end
 
                 # add arcs i - > j
                 arc_id = add_arc!(G, i, j)
                 add_arc_var_mapping!(G, arc_id, x[i, j, k])
                  
-                set_arc_consumption!(G, arc_id, fuel_res_id, f(data,ed(i,j)))
+                if i in F && j in F && i != F[1] && j != F[1]
+                    set_arc_consumption!(G, arc_id, fuel_res_id, β + 1)
+                elseif i in F && j in F && i == F[1] || j == F[1]
+                    set_arc_consumption!(G, arc_id, fuel_res_id,  - f(data,ed(i,j)))
+                else
+                    set_arc_consumption!(G, arc_id, fuel_res_id,  f(data,ed(i,j)))
+                end
+
                 set_arc_consumption!(G, arc_id, time_res_id, ((data.G′.V′[i].service_time + data.G′.V′[j].service_time)/2) + t(data,ed(i,j)))
                 # add arcs j - > i
                 
                 arc_id = add_arc!(G, j, i)
                 add_arc_var_mapping!(G, arc_id, x[i, j, k])
 
-                set_arc_consumption!(G, arc_id, fuel_res_id, f(data,ed(i,j)))
+                if i in F && j in F && i != F[1] && j != F[1]
+                    set_arc_consumption!(G, arc_id, fuel_res_id, β + 1)
+                elseif i in F && j in F && i == F[1] || j == F[1]
+                    set_arc_consumption!(G, arc_id, fuel_res_id,  - f(data,ed(i,j)))
+                else
+                    set_arc_consumption!(G, arc_id, fuel_res_id,  f(data,ed(i,j)))
+                end
+
                 set_arc_consumption!(G, arc_id, time_res_id, ((data.G′.V′[i].service_time + data.G′.V′[j].service_time)/2) + t(data,ed(i,j)))
             end
         end
@@ -210,6 +221,6 @@ function build_model(data::DataGVRP)
         end
         """
     end
-    add_cut_callback!(gvrp, maxflow_mincut_callback, "mincut")
+    #add_cut_callback!(gvrp, maxflow_mincut_callback, "mincut")
     return (gvrp, x)
 end
