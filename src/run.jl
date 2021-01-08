@@ -11,6 +11,8 @@ function parse_commandline(args_array::Array{String,1}, appfolder::String)
     @add_arg_table s begin
         "instance"
             help = "Instance file path"
+        "--preprocessings"
+            help = "Instance edges preprocessings"
         "--cfg", "-c"
             help = "Configuration file path"
             default = "$appfolder/../config/BWTSP.cfg"
@@ -32,6 +34,9 @@ function parse_commandline(args_array::Array{String,1}, appfolder::String)
             action = :store_true
         "--batch", "-b"
             help = "batch file path"
+        "--instance_type", "-i"
+            help = "Select the instance type (EMH, MATHEUS)"
+            default = "EMH"
     end
    return parse_args(args_array, s)
 end
@@ -44,9 +49,11 @@ function run_gvrp(app::Dict{String,Any})
     flush(stdout)
 
     instance_name = split(basename(app["instance"]), ".")[1] 
-
-    #data = readEMHInstance(app)
-    data = readMatheusInstance(app)
+    if app["instance_type"] == "Matheus"
+      data = readMatheusInstance(app)
+    else
+      data = readEMHInstance(app)
+    end
 
     if app["sol"] != nothing
         sol = readsolution(app)
