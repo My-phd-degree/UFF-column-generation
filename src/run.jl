@@ -65,6 +65,7 @@ function run_gvrp(app::Dict{String,Any})
     if !app["nosolve"]
         (model, x) = build_model(data)
 
+        println(model.formulation)
         # enum_paths, complete_form = get_complete_formulation(model, app["cfg"])
         # complete_form.solver = CplexSolver() # set MIP solver
         # print_enum_paths(enum_paths)

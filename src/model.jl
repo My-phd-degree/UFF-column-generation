@@ -12,12 +12,10 @@ function build_model(data::DataGVRP)
     popfirst!(F´)
 
     T = data.T # General time limit
-    #M = data.M # Set of vehicles
+    M = data.M # Set of vehicles
     
-    #M = [k for k in 1:data.m]
-    M = [k for k in 1:length(C)]
     K = M
-    #                                           7   0          
+       
     #ed(i, j) = (i in F´ || j in F´) ? (j, i) : ( i < j ? (i, j) : (j, i) )
     ed(i, j) = i < j ? (i, j) : (j, i)
 

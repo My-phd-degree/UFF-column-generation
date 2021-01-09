@@ -59,7 +59,7 @@ contains(p, s) = findnext(s, p, 1) != nothing
 
 function readEMHInstance(app::Dict{String,Any})
     G′ = InputGraph([], [], Dict())
-    data = DataGVRP(G′, [], [], [], 0.0, 0.0, 0.0, 0.0,0.0)
+    data = DataGVRP(G′, [], [], [], 0.0, 0.0, 0.0, 0.0, 0)
 
     open(app["instance"]) do f
       # Ignore header
@@ -104,12 +104,8 @@ function readEMHInstance(app::Dict{String,Any})
       data.ε = parse(Float64, split(line, ['/']; limit=0, keepempty=false)[2])
       # Get amount of vehicle
       line = readline(f)
-      data.m = parse(Float64, split(line, ['/']; limit=0, keepempty=false)[2])
-      #data.m = [i in 1:length(C)]
-
-      #data.G′.V′[1].service_time = data.T
-
-      for k in 0:data.m push!(data.M, k) end
+      data.m = parse(Int64, split(line, ['/']; limit=0, keepempty=false)[2])
+      for k in 1:data.m push!(data.M, k) end
     end
 
     for i in vertices(data)
@@ -127,7 +123,7 @@ end
 
 function readMatheusInstance(app::Dict{String,Any})
     G′ = InputGraph([], [], Dict())
-    data = DataGVRP(G′, [], [],[], 0.0, 0.0, 0.0, 0.0, 0.0)
+    data = DataGVRP(G′, [], [],[], 0.0, 0.0, 0.0, 0.0, 0)
     sepChar = ';'
     open(app["instance"]) do f
       # vehicle data
@@ -185,6 +181,9 @@ function readMatheusInstance(app::Dict{String,Any})
         push!(G′.V′, v) 
         i = i + 1
       end
+      data.m = length(data.C)
+      for k in 1:data.m push!(data.M, k) end
+      #data.M = [k for k in 0:data.m]
     end
 
     #read preprocessings
