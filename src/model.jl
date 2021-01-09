@@ -18,13 +18,13 @@ function build_model(data::DataGVRP)
     M = [k for k in 1:length(C)]
     K = M
     #                                           7   0          
-    ed(i, j) = (i in F´ || j in F´) ? (j, i) : ( i < j ? (i, j) : (j, i) )
-    #ed(i, j) = i < j ? (i, j) : (j, i)
+    #ed(i, j) = (i in F´ || j in F´) ? (j, i) : ( i < j ? (i, j) : (j, i) )
+    ed(i, j) = i < j ? (i, j) : (j, i)
 
     for f in F´
-            println(f)
-            #value = f(data, ed(f, j) )
-            #println("f(data, ed(f, j)) --- $f", f(data, ed(f, j)))
+        println(f)
+        #value = f(data, ed(f, j) )
+        #println("f(data, ed(f, j)) --- $f", f(data, ed(f, j)))
     end
 
     println("--------------------")
