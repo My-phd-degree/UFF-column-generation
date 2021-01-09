@@ -35,8 +35,9 @@ function distance(data::DataGVRP, e::Tuple{Int64,Int64})
   end
   u, v = e 
   vertices = data.G′.V′
+  flag = 1
   # array <vertices> is indexed from 1 (depot is vertices[1], customer 1 is vertices[2], and so on)
-  return GEO_dist(vertices[u], vertices[v])
+  return (flag == 1) ? GEO_dist(vertices[u], vertices[v]) : EUC_dist(vertices[u], vertices[v])  
 end
 
 # GEO distance
@@ -184,12 +185,27 @@ function readMatheusInstance(app::Dict{String,Any})
       end
     end
 
+    #read preprocessings
+    invalidEdges = []
+    if haskey(app, "preprocessings") && app["preprocessings"] != nothing
+      open(app["preprocessings"]) do f
+        while !eof(f)
+          # read edge
+          line = readline(f)
+          edge = split(line, [' ', ',']; limit=0, keepempty=false)
+          push!(invalidEdges, (parse(Int, edge[1]) + 1, parse(Int, edge[2]) + 1))
+        end
+      end
+    end
+
     for i in vertices(data)
       for j in vertices(data) # add arcs between vertices
         if i < j
           e = (i, j)
           vertices = data.G′.V′
+          a, b = data.G′.V′[i], data.G′.V′[j]
           push!(G′.E, e) # add edge e
+          #data.G′.cost[e] = distance(vertices[e[1]], vertices[e[2]])
           data.G′.cost[e] = EUC_dist(vertices[e[1]], vertices[e[2]])
         end
       end

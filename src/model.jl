@@ -8,6 +8,9 @@ function build_model(data::DataGVRP)
     β = data.β
     C = data.C # Set of customers vertices
     F = data.F # Set of AFSs vertices
+    F´ = deepcopy(F) 
+    popfirst!(F´)
+
     T = data.T # General time limit
     #M = data.M # Set of vehicles
     
@@ -16,6 +19,13 @@ function build_model(data::DataGVRP)
     K = M
 
     ed(i, j) = i < j ? (i, j) : (j, i)
+
+    for f in F
+        for j in V
+            #value = f(data, ed(f, j) )
+            #println("f(data, ed(f, j)) --- $f", f(data, ed(f, j)))
+        end
+    end
 
     # Formulation
     gvrp = VrpModel()
@@ -221,6 +231,6 @@ function build_model(data::DataGVRP)
         end
         """
     end
-    #add_cut_callback!(gvrp, maxflow_mincut_callback, "mincut")
+    add_cut_callback!(gvrp, maxflow_mincut_callback, "mincut")
     return (gvrp, x)
 end
