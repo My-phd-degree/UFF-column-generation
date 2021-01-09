@@ -15,24 +15,10 @@ function build_model(data::DataGVRP)
     M = data.M # Set of vehicles
     
     K = M
-       
-    #ed(i, j) = (i in F´ || j in F´) ? (j, i) : ( i < j ? (i, j) : (j, i) )
+    
     ed(i, j) = i < j ? (i, j) : (j, i)
 
-    for f in F´
-        println(f)
-        #value = f(data, ed(f, j) )
-        #println("f(data, ed(f, j)) --- $f", f(data, ed(f, j)))
-    end
-
     println("--------------------")
-
-    for i in V
-        for j in V
-            println(" i_$i j_$j ", i, j)
-        end
-        println("")
-    end
 
     # Formulation
     gvrp = VrpModel()
@@ -52,9 +38,9 @@ function build_model(data::DataGVRP)
 
                   deg_6_6[i in C, j in C, k in M], e[j] <= e[i] - f(data, ed(i, j))*x[i,j,k] + data.β*(1.0 - x[i,j,k]) + f(data, ed(j, i))*x[j,i,k]
 
-                  #deg_6_7_1[j in C],  e[j] <= data.β - sum( f(data, ed(f, j))*x[f,j,k] for k in M , f in F´ )
+                  deg_6_7_1[j in C],  e[j] <= data.β - sum( f(data, ed( ff, j))*x[ff,j,k] for k in M , ff in F´ )
                   
-                  #deg_6_7_2[j in C],  sum( f(data, ed(j, f))*x[j,f,k] for k in M , f in F´ ) <= e[j]
+                  deg_6_7_2[j in C],  sum( f(data, ed(j, ff))*x[j,ff,k] for k in M , ff in F´ ) <= e[j]
 
                   deg_6_9[k in M], sum(x[i, j, k] * (t(data, ed(i, j)) + data.G′.V′[i].service_time) for i in V, j in V if i!=j) <= T
 
@@ -66,7 +52,7 @@ function build_model(data::DataGVRP)
     # Build the model directed graph G=(V,A)
     function build_graph(k::Int64)
         v_source = v_sink = 0
-        L = U = length(F) # max and min number of paths is equal to number of AFSs
+        L = U = length(C) # max and min number of paths is equal to number of AFSs
 
         # node ids of G from 0 to |V|
         G = VrpGraph(gvrp, V′, v_source, v_sink, (L, U))
@@ -74,6 +60,7 @@ function build_model(data::DataGVRP)
         time_res_id = add_resource!(G, main=true)
         fuel_res_id = add_resource!(G, main=true)
 
+        println("OKAY 1")
         for i in V′
             # l_i, u_i = 0.0, Float64(Q) # accumulated resource consumption interval [l_i, u_i] for the vertex i
             # set_resource_bounds!(G, i, cap_res_id, l_i, u_i)
@@ -84,8 +71,9 @@ function build_model(data::DataGVRP)
             set_resource_bounds!(G, i, time_res_id, l_i_time, u_i_time)
         end
 
+        println("OKAY 2")
         # Build set of arcs A from E′ (two arcs for each edge (i,j))
-        for f in F # setting the arcs between source, sink, and black vertices
+        for f in F´ # setting the arcs between source, sink, and black vertices
             # source -> i(AFS)
             arc_id = add_arc!(G, v_source, f)
             set_arc_consumption!(G, arc_id, time_res_id, data.G′.V′[f].service_time/2)
@@ -96,6 +84,7 @@ function build_model(data::DataGVRP)
             set_arc_consumption!(G, arc_id, fuel_res_id, 0.0)
         end
 
+        println("OKAY 3")
         for i in V
             for j in V
                 # resource comsuption for the R = 1 
@@ -147,12 +136,13 @@ function build_model(data::DataGVRP)
     for G in Graphs
       add_graph!(gvrp, G)
     end
+    println("OKAY 4")
 
     set_vertex_packing_sets!(gvrp, [[(Graphs[k], i) for k in K] for i in C])
-    
+    println("OKAY 5")
     [define_elementarity_sets_distance_matrix!(gvrp, Graphs[k], [[d(data,ed(i, j)) for i in C] for j in C]) for k in K]
     # add_capacity_cut_separator!(gvrp, [ ([(G, i)], 1.0) for i in W], Float64(Q))
-
+    println("OKAY 6")
     set_branching_priority!(gvrp, "x", 1)
 
     function maxflow_mincut_callback()
