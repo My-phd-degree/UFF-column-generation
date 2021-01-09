@@ -17,14 +17,23 @@ function build_model(data::DataGVRP)
     #M = [k for k in 1:data.m]
     M = [k for k in 1:length(C)]
     K = M
+    #                                           7   0          
+    ed(i, j) = (i in F´ || j in F´) ? (j, i) : ( i < j ? (i, j) : (j, i) )
+    #ed(i, j) = i < j ? (i, j) : (j, i)
 
-    ed(i, j) = i < j ? (i, j) : (j, i)
-
-    for f in F
-        for j in V
+    for f in F´
+            println(f)
             #value = f(data, ed(f, j) )
             #println("f(data, ed(f, j)) --- $f", f(data, ed(f, j)))
+    end
+
+    println("--------------------")
+
+    for i in V
+        for j in V
+            println(" i_$i j_$j ", i, j)
         end
+        println("")
     end
 
     # Formulation
@@ -45,9 +54,9 @@ function build_model(data::DataGVRP)
 
                   deg_6_6[i in C, j in C, k in M], e[j] <= e[i] - f(data, ed(i, j))*x[i,j,k] + data.β*(1.0 - x[i,j,k]) + f(data, ed(j, i))*x[j,i,k]
 
-                  #deg_6_7_1[j in C],  e[j] <= data.β - sum( f(data, ed(f, j))*x[f,j,k] for k in M , f in F )
+                  #deg_6_7_1[j in C],  e[j] <= data.β - sum( f(data, ed(f, j))*x[f,j,k] for k in M , f in F´ )
                   
-                  #deg_6_7_2[j in C],  sum( f(data, ed(j, f))*x[j,f,k] for k in M , f in F ) <= e[j]
+                  #deg_6_7_2[j in C],  sum( f(data, ed(j, f))*x[j,f,k] for k in M , f in F´ ) <= e[j]
 
                   deg_6_9[k in M], sum(x[i, j, k] * (t(data, ed(i, j)) + data.G′.V′[i].service_time) for i in V, j in V if i!=j) <= T
 

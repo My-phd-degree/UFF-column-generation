@@ -79,7 +79,7 @@ function readEMHInstance(app::Dict{String,Any})
         
         if aux[2] == "f" || aux[2] == "d"
           # Get AFS
-          v.service_time = aux[2] == "f" ? 0.25 : 0
+          v.service_time = aux[2] == "f" ? 0.25 : 0.0
           push!(data.F, v.id_vertex)
         elseif aux[2] == "c"
           # Get customer
@@ -106,6 +106,8 @@ function readEMHInstance(app::Dict{String,Any})
       line = readline(f)
       data.m = parse(Float64, split(line, ['/']; limit=0, keepempty=false)[2])
       #data.m = [i in 1:length(C)]
+
+      #data.G′.V′[1].service_time = data.T
 
       for k in 0:data.m push!(data.M, k) end
     end
