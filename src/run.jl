@@ -37,74 +37,78 @@ function parse_commandline(args_array::Array{String,1}, appfolder::String)
         "--instance_type", "-i"
             help = "Select the instance type (EMH, MATHEUS)"
             default = "EMH"
-    end
+        "--verbose", "-v"
+            help = "true to see the logs, false otherwise"
+            default = true
+          end
    return parse_args(args_array, s)
 end
 
 function run_gvrp(app::Dict{String,Any})
+  if app["verbose"]
     println("Application parameters:")
     for (arg, val) in app
-        println("  $arg  =>  $(repr(val))")
+      println("  $arg  =>  $(repr(val))")
     end
-    flush(stdout)
+  end
+  flush(stdout)
 
-    instance_name = split(basename(app["instance"]), ".")[1] 
-    if app["instance_type"] == "Matheus"
-      data = readMatheusInstance(app)
+  instance_name = split(basename(app["instance"]), ".")[1] 
+  if app["instance_type"] == "Matheus"
+    data = readMatheusInstance(app)
+  else
+    data = readEMHInstance(app)
+  end
+
+  if app["sol"] != nothing
+    sol = readsolution(app)
+    checksolution(data, sol, app) # checks the solution feasibility
+    app["ub"] = (sol.cost < app["ub"]) ? sol.cost : app["ub"] # update the upper bound if necessary
+  end
+
+  solution_found = false
+  if !app["nosolve"]
+    (model, x) = build_model(data)
+
+    # enum_paths, complete_form = get_complete_formulation(model, app["cfg"])
+    # complete_form.solver = CplexSolver() # set MIP solver
+    # print_enum_paths(enum_paths)
+    # println(complete_form)
+    # solve(complete_form)
+    # println("Objective value: $(getobjectivevalue(complete_form))\n")
+
+    optimizer = VrpOptimizer(model, app["cfg"], instance_name)
+    set_cutoff!(optimizer, app["ub"])
+
+    (status, solution_found) = optimize!(optimizer)
+    if solution_found
+      sol = getsolution(data, optimizer, x, get_objective_value(optimizer), app)
+    end
+  end
+  println("########################################################")
+  if solution_found || app["sol"] != nothing # Is there a solution?
+    print_routes(sol)
+    #checksolution(data, sol)
+    println("Cost $(sol.cost)")
+    checksolution(data, sol)
+    if app["out"] != nothing
+      writesolution(app["out"], sol)
+    end
+    if app["tikz"] != nothing
+      if data.coord
+        drawsolution(app["tikz"], data, sol) # write tikz figure
+      else
+        println("TikZ figure ($(app["tikz"])) will not be generated, since the instance has no coordinates.")
+      end
+    end
+  elseif !app["nosolve"]
+    if status == :Optimal
+      println("Problem infeasible")
     else
-      data = readEMHInstance(app)
+      println("Solution not found")
     end
-
-    if app["sol"] != nothing
-        sol = readsolution(app)
-        checksolution(data, sol, app) # checks the solution feasibility
-        app["ub"] = (sol.cost < app["ub"]) ? sol.cost : app["ub"] # update the upper bound if necessary
-    end
-
-    solution_found = false
-    if !app["nosolve"]
-        (model, x) = build_model(data)
-
-        # enum_paths, complete_form = get_complete_formulation(model, app["cfg"])
-        # complete_form.solver = CplexSolver() # set MIP solver
-        # print_enum_paths(enum_paths)
-        # println(complete_form)
-        # solve(complete_form)
-        # println("Objective value: $(getobjectivevalue(complete_form))\n")
-        
-        optimizer = VrpOptimizer(model, app["cfg"], instance_name)
-        set_cutoff!(optimizer, app["ub"])
-        
-        (status, solution_found) = optimize!(optimizer)
-        if solution_found
-            sol = getsolution(data, optimizer, x, get_objective_value(optimizer), app)
-        end
-    end
-
-    println("########################################################")
-    if solution_found || app["sol"] != nothing # Is there a solution?
-        print_routes(sol)
-        #checksolution(data, sol)
-        println("Cost $(sol.cost)")
-        checksolution(data, sol)
-        if app["out"] != nothing
-            writesolution(app["out"], sol)
-        end
-        if app["tikz"] != nothing
-            if data.coord
-                drawsolution(app["tikz"], data, sol) # write tikz figure
-            else
-                println("TikZ figure ($(app["tikz"])) will not be generated, since the instance has no coordinates.")
-            end
-        end
-    elseif !app["nosolve"]
-        if status == :Optimal
-            println("Problem infeasible")
-        else
-            println("Solution not found")
-        end
-    end
-    println("########################################################")
+  end
+  println("########################################################")
 end
 
 function main(ARGS)

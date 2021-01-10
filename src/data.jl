@@ -67,11 +67,13 @@ function readEMHInstance(app::Dict{String,Any})
         push!(G′.V′, v) 
         if aux[2] == "f" || aux[2] == "d"
           # Get AFS
-          v.service_time = aux[2] == "f" ? 0.25 : 0
+#          v.service_time = aux[2] == "f" ? 0.25 : 0
+          v.service_time = aux[2] == "f" ? 15 : 0
           push!(data.F, v.id_vertex)
         elseif aux[2] == "c"
           # Get customer
-          v.service_time = 0.5
+#          v.service_time = 0.5
+          v.service_time = 30
           push!(data.C, v.id_vertex)
         end
         i += 1
@@ -85,10 +87,11 @@ function readEMHInstance(app::Dict{String,Any})
       data.ρ = parse(Float64, split(line, ['/']; limit=0, keepempty=false)[2])
       # Get vehicle time limit
       line = readline(f)
-      data.T = 10.75 
+#      data.T = 10.75 
+      data.T = 700 
       # Get vehicle average speed
       line = readline(f)
-      data.ε = parse(Float64, split(line, ['/']; limit=0, keepempty=false)[2])
+      data.ε = parse(Float64, split(line, ['/']; limit=0, keepempty=false)[2])/60.0
     end
 
     #read preprocessings

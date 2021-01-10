@@ -23,10 +23,31 @@ function cplex(data::DataGVRP)
   @constraint(gvrp_, hotel_deg[i in F], sum(x[e] for e in δ(data, i)) == 2*y[i])
   @constraint(gvrp_, no_edge_between_afss[f in F´], sum(x[(f, r)] for r in F´ if (f, r) in data.G′.E) == 0.0)
   @constraint(gvrp_, y[F[1]] >= 1)
-  user_cut_added_cuts = []
-  lazy_added_cuts = []
+  time_user_cut_added_cuts = []
+  time_lazy_added_cuts = []
+  fuel_user_cut_added_cuts = []
+  fuel_lazy_added_cuts = []
   function separa(cb, corte)
-    # solve model
+    x´ = Dict{Tuple{Int64,Int64},Float64}(e => getvalue(x[e]) for e in E)
+    # fuel separation
+    # dfs
+    """
+    edges = []
+    function dfs(i::Int64)
+      for e in δ(data, i) 
+        if x´[e] > 0.0001 
+          if e[1] in F && e[1] != i
+            # get edges
+               
+          end
+          push!(edge, e)
+        end
+      end
+    end
+    for f in F
+    end
+    """
+    # time separation
     M = Model(solver = CplexSolver(
                                    CPX_PARAM_MIPDISPLAY=0,
                                    CPX_PARAM_SCRIND=0
@@ -34,7 +55,6 @@ function cplex(data::DataGVRP)
     @variable(M, 0 <= y[1:n] <= 1, Int)
     @variable(M, 0 <= w[e in E] <= 1, Int)
     @variable(M, 0 <= z[e in E] <= 1, Int)
-    x´ = Dict{Tuple{Int64,Int64},Float64}(e => getvalue(x[e]) for e in E)
     @objective(M, Max, (2/T) * sum(z[e] * x´[e] * t(data, e) for e in E) - sum(w[e] * x´[e] for e in E))
     @constraint(M, update_z_1[e in E], z[e] >= y[e[1]])
     @constraint(M, update_z_2[e in E], z[e] >= y[e[2]])
@@ -67,17 +87,17 @@ function cplex(data::DataGVRP)
       lhs_coeff = vcat([1.0 for e in E if w´[e] > 0.5], [- t(data, e) * 2/T for e in E if z´[e] > 0.5])
 
       if corte
-        if setIn in user_cut_added_cuts
+        if setIn in time_user_cut_added_cuts
           println("=======>REPEATED USER CUT!!!")
         end
-        push!(user_cut_added_cuts, setIn)
+        push!(time_user_cut_added_cuts, setIn)
         @usercut(cb, sum(lhs_vars[i] * lhs_coeff[i] for i in 1:length(lhs_vars)) >= 0.0)
         unsafe_store!(cb.userinteraction_p, convert(Cint,2), 1)
       else
-        if setIn in lazy_added_cuts
+        if setIn in time_lazy_added_cuts
           println("=======>REPEATED LAZY CUT!!!")
         end
-        push!(lazy_added_cuts, setIn)
+        push!(time_lazy_added_cuts, setIn)
         @lazyconstraint(cb, sum(lhs_vars[i] * lhs_coeff[i] for i in 1:length(lhs_vars)) >= 0.0)
       end
     end
@@ -95,7 +115,6 @@ function cplex(data::DataGVRP)
 end
 
 function build_model(data::DataGVRP)
-
   E = edges(data) # set of edges of the input graph G′
   n = nb_vertices(data)
   V = [i for i in 1:n] # set of vertices of the input graph G′
@@ -105,45 +124,45 @@ function build_model(data::DataGVRP)
   C = data.C # Set of customers vertices
   F = data.F # Set of AFSs vertices
   T = data.T # Set of AFSs vertices
+  F´ = deepcopy(F) 
+  popfirst!(F´)
 
   ed(i, j) = i < j ? (i, j) : (j, i)
 
-  println("Customers ")
-  for i in data.C
-    println(i, " ", data.G′.V′[i], ", δ($i) = $(δ(data, i))")
-  end
-  println("AFSs ")
-  for i in data.F
-    println(i, " ", data.G′.V′[i], ", δ($i) = $(δ(data, i))")
-  end
-  println("β: $β")
-  println("T: $T")
-  println("ρ: $(data.ρ)")
-  println("ε: $(data.ε)")
-  println("E: ", length(E))
-  for (i, j) in E
-    println("d(($i, $j)) = ", d(data, (i, j)), " f(($i, $j)) = ", f(data, (i, j)), " t(($i, $j)) = ", t(data, (i, j)))
-  end
+# println("Customers ")
+# for i in data.C
+#   println(i, " ", data.G′.V′[i], ", δ($i) = $(δ(data, i))")
+# end
+# println("AFSs ")
+# for i in data.F
+#   println(i, " ", data.G′.V′[i], ", δ($i) = $(δ(data, i))")
+# end
+# println("F´: ", F´)
+# println("β: $β")
+# println("T: $T")
+# println("ρ: $(data.ρ)")
+# println("ε: $(data.ε)")
+# println("E: ", length(E))
+# for (i, j) in E
+#   println("d(($i, $j)) = ", d(data, (i, j)), " f(($i, $j)) = ", f(data, (i, j)), " t(($i, $j)) = ", t(data, (i, j)))
+# end
   
   # Formulation
   gvrp = VrpModel()
-  F´ = deepcopy(F) 
-  popfirst!(F´)
   @variable(gvrp.formulation, x[e in E], Int)
   @variable(gvrp.formulation, 2 * length(C) >= y[i in F] >= 0, Int)
   @objective(gvrp.formulation, Min, sum(d(data, e) * x[e] for e in E))
   @constraint(gvrp.formulation, deg[i in C], sum(x[e] for e in δ(data, i)) == 2.0)
   @constraint(gvrp.formulation, hotel_deg[i in F], sum(x[e] for e in δ(data, i)) == 2*y[i])
-  @constraint(gvrp.formulation, no_edge_between_afss[f in F´], sum(x[(f, r)] for r in F´ if (f, r) in data.G′.E) == 0.0)
+  @constraint(gvrp.formulation, no_edge_between_afss[f in F´], sum(x[(f, r)] for r in F´ if (f, r) in E) == 0.0)
   @constraint(gvrp.formulation, y[F[1]] >= 1)
-
-  #    println(gvrp.formulation)
 
   # Build the model directed graph G=(V,A)
   function build_graph()
 
     v_source = v_sink = 0
-    L = U = length(F) # max and min number of paths is equal to number of AFSs
+#    L = U = length(F) # max and min number of paths is equal to number of AFSs
+    L, U = 0, length(C) # max and min number of paths is equal to number of AFSs
 
     # node ids of G from 0 to |V|
     G = VrpGraph(gvrp, V′, v_source, v_sink, (L, U))
@@ -161,11 +180,11 @@ function build_model(data::DataGVRP)
     for f in F # setting the arcs between source, sink, and black vertices
       # source -> i(AFS)
       arc_id = add_arc!(G, v_source, f)
-      set_arc_consumption!(G, arc_id, time_res_id, data.G′.V′[f].service_time/2)
+      set_arc_consumption!(G, arc_id, time_res_id, data.G′.V′[f].service_time/2.0)
       set_arc_consumption!(G, arc_id, fuel_res_id, 0.0)
       # i(AFS) -> sink
       arc_id = add_arc!(G, f, v_sink)
-      set_arc_consumption!(G, arc_id, time_res_id, data.G′.V′[f].service_time/2)
+      set_arc_consumption!(G, arc_id, time_res_id, data.G′.V′[f].service_time/2.0)
       set_arc_consumption!(G, arc_id, fuel_res_id, 0.0)
     end
     for (i, j) in E
@@ -176,7 +195,7 @@ function build_model(data::DataGVRP)
       if i in F && j in F && i != F[1] && j != F[1]
         set_arc_consumption!(G, arc_id, fuel_res_id, β + 1)
       elseif i in F && j in F && i == F[1] || j == F[1]
-        set_arc_consumption!(G, arc_id, fuel_res_id,  - f(data,(i,j)))
+        set_arc_consumption!(G, arc_id, fuel_res_id, - f(data,(i,j)))
       else
         set_arc_consumption!(G, arc_id, fuel_res_id,  f(data,(i,j)))
       end
@@ -188,7 +207,7 @@ function build_model(data::DataGVRP)
       if i in F && j in F && i != F[1] && j != F[1]
         set_arc_consumption!(G, arc_id, fuel_res_id, β + 1)
       elseif i in F && j in F && i == F[1] || j == F[1]
-        set_arc_consumption!(G, arc_id, fuel_res_id,  - f(data,(i,j)))
+        set_arc_consumption!(G, arc_id, fuel_res_id, - f(data,(i,j)))
       else
         set_arc_consumption!(G, arc_id, fuel_res_id,  f(data,(i,j)))
       end
@@ -199,10 +218,8 @@ function build_model(data::DataGVRP)
 
   G = build_graph()
   add_graph!(gvrp, G)
-  #    println(G)
 
   set_vertex_packing_sets!(gvrp, [[(G, i)] for i in C])
-  #    set_additional_vertex_elementarity_sets!(gvrp, [(G,[i]) for i in B])
 
   define_elementarity_sets_distance_matrix!(gvrp, G, [[ed(i, j) in data.G′.E ? d(data, ed(i, j)) : 0.0 for i in C] for j in C])
 
@@ -216,7 +233,6 @@ function build_model(data::DataGVRP)
     for (i, j) in E
       e = (i, j)
       value::Float64 = sum(get_value(gvrp.optimizer, x[e]))
-      #            value::Float64 = get_value(gvrp.optimizer, x[e] * t(data, ee))
       if value > 0.0001
         flow_::Int = trunc(floor(value, digits=5) * M)
         push!(g, SparseMaxFlowMinCut.ArcFlow(i, j, flow_)) # arc i -> j
@@ -228,18 +244,13 @@ function build_model(data::DataGVRP)
     s = F[1]
     for c in C
       maxFlow, flows, cut = SparseMaxFlowMinCut.find_maxflow_mincut(SparseMaxFlowMinCut.Graph(n, g), s, c)
-      #            if (maxFlow / M) > (T - 0.001) && !in(cut, added_cuts)
       if (maxFlow / M) < (2 - 0.001) && !in(cut, added_cuts)
         set1, set2 = [], []
         [cut[i] == 1 ? push!(set1, i) : push!(set2, i) for i in 1:n]
+        println(set1, "\\", set2)
+        lhs_vars = [x[ed(i, j)] for i in set2 for j in set1 if ed(i, j) in E]
+        lhs_coeff = [1.0 for i in set2 for j in set1 if ed(i, j) in E]
         setIn = c in set1 ? set1 : set2
-#        lhs_vars = vcat([x[ed(i, j)] for i in set2 for j in set1 if ed(i, j) in data.G′.E], [x[e] for e in E if e[1] in setIn || e[2] in setIn])
-#        lhs_coeff = vcat([1.0 for i in set2 for j in set1 if ed(i, j) in data.G′.E], [- t(data, e) * 2/T for e in E if e[1] in setIn || e[2] in setIn])
-        lhs_vars = [x[ed(i, j)] for i in set2 for j in set1 if ed(i, j) in data.G′.E]
-        lhs_coeff = [1.0 for i in set2 for j in set1 if ed(i, j) in data.G′.E]
-
-        #                add_dynamic_constr!(gvrp.optimizer, lhs_vars, lhs_coeff, >=, 2.0 * floor(ceil(sum(data.G′.V′[i].service_time for i in (c in set1 ? set1 : set2) if i in C)/T)), "mincut")
-#        add_dynamic_constr!(gvrp.optimizer, lhs_vars, lhs_coeff, >=, 0.0, "mincut")
         add_dynamic_constr!(gvrp.optimizer, lhs_vars, lhs_coeff, >=, 2.0, "mincut")
 
         push!(added_cuts, cut)
@@ -285,8 +296,8 @@ function build_model(data::DataGVRP)
 #     println(y´)
 #     println(w´)
 #     println(z´)
-#     println("S: ", setIn)
-#     println("V\\S: ", setOut)
+     println("S: ", setIn)
+     println("V\\S: ", setOut)
 #     println([x[e] for e in E if w´[e] > 0.5])
 #     println()
 #     println([x[e] for e in E if z´[e] > 0.5])
@@ -336,3 +347,4 @@ function build_model(data::DataGVRP)
   end
   add_cut_callback!(gvrp, maxflow_mincut_time_callback, "mincuttime")
   return (gvrp, x)
+end
