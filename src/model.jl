@@ -18,8 +18,7 @@ function build_model(data::DataGVRP)
     
     ed(i, j) = i < j ? (i, j) : (j, i)
 
-    println("--------------------")
-
+    # data.E′
     # Formulation
     gvrp = VrpModel()
     @variables(gvrp.formulation, begin
@@ -27,7 +26,7 @@ function build_model(data::DataGVRP)
                  0 <= e[i in C] <= data.β
                end)
 
-    @objective(gvrp.formulation, Min, sum( data.G′.cost[ed(i, j)] * x[i,j,k] for i in V, j in V, k in M if i != j ) )
+    @objective(gvrp.formulation, Min, sum( data.G′.cost[ed(i, j)] * x[i,j,k] for i in V, j in V, k in M if i != j  ) )
 
     @constraints(gvrp.formulation, begin
                   deg_6_2[k in M], sum(x[1,j,k] for j in V if j!=1 ) <= 1.0
@@ -52,7 +51,8 @@ function build_model(data::DataGVRP)
     # Build the model directed graph G=(V,A)
     function build_graph(k::Int64)
         v_source = v_sink = 0
-        L = U = length(C) # max and min number of paths is equal to number of AFSs
+        L = 0 
+        U = length(C) # max and min number of paths is equal to number of AFSs
 
         # node ids of G from 0 to |V|
         G = VrpGraph(gvrp, V′, v_source, v_sink, (L, U))
@@ -60,7 +60,6 @@ function build_model(data::DataGVRP)
         time_res_id = add_resource!(G, main=true)
         fuel_res_id = add_resource!(G, main=true)
 
-        println("OKAY 1")
         for i in V′
             # l_i, u_i = 0.0, Float64(Q) # accumulated resource consumption interval [l_i, u_i] for the vertex i
             # set_resource_bounds!(G, i, cap_res_id, l_i, u_i)
@@ -71,7 +70,6 @@ function build_model(data::DataGVRP)
             set_resource_bounds!(G, i, time_res_id, l_i_time, u_i_time)
         end
 
-        println("OKAY 2")
         # Build set of arcs A from E′ (two arcs for each edge (i,j))
         for f in F´ # setting the arcs between source, sink, and black vertices
             # source -> i(AFS)
@@ -84,7 +82,6 @@ function build_model(data::DataGVRP)
             set_arc_consumption!(G, arc_id, fuel_res_id, 0.0)
         end
 
-        println("OKAY 3")
         for i in V
             for j in V
                 # resource comsuption for the R = 1 
@@ -129,24 +126,25 @@ function build_model(data::DataGVRP)
 
     Graphs = []
     for k in K
-        print(k)
         push!(Graphs, build_graph(k))
     end
 
     for G in Graphs
       add_graph!(gvrp, G)
     end
-    println("OKAY 4")
 
     set_vertex_packing_sets!(gvrp, [[(Graphs[k], i) for k in K] for i in C])
-    println("OKAY 5")
+
     [define_elementarity_sets_distance_matrix!(gvrp, Graphs[k], [[d(data,ed(i, j)) for i in C] for j in C]) for k in K]
     # add_capacity_cut_separator!(gvrp, [ ([(G, i)], 1.0) for i in W], Float64(Q))
-    println("OKAY 6")
+
     set_branching_priority!(gvrp, "x", 1)
 
     function maxflow_mincut_callback()
+        println("OKAY 7")
         M = 100000
+        added_cuts = []
+
         # for all routes
         """g = SparseMaxFlowMinCut.ArcFlow[]
         for i in V
@@ -161,7 +159,6 @@ function build_model(data::DataGVRP)
             end
         end
 
-        added_cuts = []
         s = F[1]
         for c in C
             maxFlow, flows, cut = SparseMaxFlowMinCut.find_maxflow_mincut(SparseMaxFlowMinCut.Graph(n, g), s, c)
@@ -191,17 +188,22 @@ function build_model(data::DataGVRP)
             visited[c] = true
             comp = [c]
             q = [c]
+            #println(q)
+            #println("--------------------------------------------------------------------------------------------------------------------------------------------------")
             while length(q) > 0
               i = pop!(q)
               for j in V 
-                if i != j && get_value(gvrp.optimizer, x[i, j, k]) > 0.0001 || 
-                    get_value(gvrp.optimizer, x[j, i, k]) > 0.0001 &&     !visited[j]
+                #if i != j && get_value(gvrp.optimizer, x[i, j, k]) > 0.0001 || 
+                #    get_value(gvrp.optimizer, x[j, i, k]) > 0.0001 &&     !visited[j]
+                if i != j && get_value(gvrp.optimizer, x[i, j, k]) > 0.0001 && !visited[j]
                   visited[j] = true
                   push!(q, j)
                   push!(comp, j)
                 end
               end
             end
+            #println("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+            
             if !(s in comp) && length(comp) > 1
               println("Route $k S: ", comp)
               lhs_vars = [x[i, j, k] for i in comp for j in V if !(j in comp)]
@@ -214,8 +216,9 @@ function build_model(data::DataGVRP)
                                           vcat(lhs_vars, [x[i, j, k]]), 
                                           vcat(lhs_coeff, [-1.0]), 
                                           >=, 0.0, "mincut")
+                      println("add cut")
                     end
-                  #push!(added_cuts, cut)
+                    #push!(added_cuts, cut)
                   end
                 end
               end

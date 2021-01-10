@@ -20,6 +20,7 @@ mutable struct DataGVRP
     F::Array{Int64} # AFSs nodes
     C::Array{Int64} # Customers nodes
     M::Array{Int64} # Vehicles IDs
+    E′::Array{Tuple{Int64,Int64}}
     β::Float64 # Total distance between two consecutive black vertices
     T::Float64 # Route time limit
     ρ::Float64 # Vehicle fuel comsumption rate
@@ -59,7 +60,7 @@ contains(p, s) = findnext(s, p, 1) != nothing
 
 function readEMHInstance(app::Dict{String,Any})
     G′ = InputGraph([], [], Dict())
-    data = DataGVRP(G′, [], [], [], 0.0, 0.0, 0.0, 0.0, 0)
+    data = DataGVRP(G′, [], [], [], [], 0.0, 0.0, 0.0, 0.0, 0)
 
     open(app["instance"]) do f
       # Ignore header
@@ -108,9 +109,23 @@ function readEMHInstance(app::Dict{String,Any})
       for k in 1:data.m push!(data.M, k) end
     end
 
+
+    #read preprocessings
+    data.E′ = []
+    if haskey(app, "preprocessings") && app["preprocessings"] != nothing
+      open(app["preprocessings"]) do f
+        while !eof(f)
+          # read edge
+          line = readline(f)
+          edge = split(line, [' ', ',']; limit=0, keepempty=false)
+          push!(data.E′, (parse(Int64, edge[1]) + 1, parse(Int64, edge[2]) + 1))
+        end
+      end
+    end
+
     for i in vertices(data)
       for j in vertices(data) # add arcs between vertices
-        if i < j
+        if i < j && !((i, j) in data.E′)
           e = (i, j)
           push!(G′.E, e) # add edge e
           data.G′.cost[e] = distance(data, e)
@@ -123,7 +138,7 @@ end
 
 function readMatheusInstance(app::Dict{String,Any})
     G′ = InputGraph([], [], Dict())
-    data = DataGVRP(G′, [], [],[], 0.0, 0.0, 0.0, 0.0, 0)
+    data = DataGVRP(G′, [], [], [], [], 0.0, 0.0, 0.0, 0.0, 0)
     sepChar = ';'
     open(app["instance"]) do f
       # vehicle data
@@ -187,27 +202,27 @@ function readMatheusInstance(app::Dict{String,Any})
     end
 
     #read preprocessings
-    invalidEdges = []
+    data.E′ = []
     if haskey(app, "preprocessings") && app["preprocessings"] != nothing
       open(app["preprocessings"]) do f
         while !eof(f)
           # read edge
           line = readline(f)
           edge = split(line, [' ', ',']; limit=0, keepempty=false)
-          push!(invalidEdges, (parse(Int, edge[1]) + 1, parse(Int, edge[2]) + 1))
+          push!(data.E′, (parse(Int, edge[1]) + 1, parse(Int, edge[2]) + 1))
         end
       end
     end
 
     for i in vertices(data)
       for j in vertices(data) # add arcs between vertices
-        if i < j
           e = (i, j)
-          vertices = data.G′.V′
           a, b = data.G′.V′[i], data.G′.V′[j]
-          push!(G′.E, e) # add edge e
-          #data.G′.cost[e] = distance(vertices[e[1]], vertices[e[2]])
-          data.G′.cost[e] = EUC_dist(vertices[e[1]], vertices[e[2]])
+          if i < j && !((a.id_vertex, b.id_vertex) in data.E′)
+            vertices = data.G′.V′
+            push!(G′.E, e) # add edge e
+            #data.G′.cost[e] = distance(vertices[e[1]], vertices[e[2]])
+            data.G′.cost[e] = EUC_dist(vertices[e[1]], vertices[e[2]])
         end
       end
     end
