@@ -26,23 +26,23 @@ function build_model(data::DataGVRP)
                  0 <= e[i in C] <= data.β
                end)
 
-    @objective(gvrp.formulation, Min, sum( data.G′.cost[ed(i, j)] * x[i,j,k] for i in V, j in V, k in M if i != j  ) )
+    @objective(gvrp.formulation, Min, sum( data.G′.cost[ed(i, j)] * x[i,j,k] for i in V, j in V, k in M if i != j && !((i, j) in data.E′)  ) )
 
     @constraints(gvrp.formulation, begin
-                  deg_6_2[k in M], sum(x[1,j,k] for j in V if j!=1 ) <= 1.0
+                  deg_6_2[k in M], sum(x[1,j,k] for j in V if (j!=1 && !((1, j) in data.E′) ) ) <= 1.0
 
-                  deg_6_3[k in M, i in V], sum(x[i,j,k] for j in V if j!=i ) == sum(x[j,i,k] for j in V if j!=i)
+                  deg_6_3[k in M, i in V], sum(x[i,j,k] for j in V if (j!=i && !((i, j) in data.E′) ) ) == sum(x[j,i,k] for j in V if (j!=i && !((j, i) in data.E′) ) )
 
-                  deg_6_4[i in C], sum( x[i,j,k] for j in V, k in M if j!=i ) == 1.0
+                  deg_6_4[i in C], sum( x[i,j,k] for j in V, k in M if (j!=i && !((i, j) in data.E′) ) ) == 1.0
 
-                  deg_6_6[i in C, j in C, k in M], e[j] <= e[i] - f(data, ed(i, j))*x[i,j,k] + data.β*(1.0 - x[i,j,k]) + f(data, ed(j, i))*x[j,i,k]
+                  deg_6_6[ [(i, j) for i in C, j in C if (i, j) in data.E′] , k in M], e[j] <= e[i] - f(data, ed(i, j))*x[i,j,k] + data.β*(1.0 - x[i,j,k]) + f(data, ed(j, i))*x[j,i,k]
 
-                  deg_6_7_1[j in C],  e[j] <= data.β - sum( f(data, ed( ff, j))*x[ff,j,k] for k in M , ff in F´ )
+                  deg_6_7_1[j in C],  e[j] <= data.β - sum( f(data, ed( ff, j))*x[ff,j,k] for k in M , ff in F´ if !( (ff, j) in data.E′ ) )
                   
-                  deg_6_7_2[j in C],  sum( f(data, ed(j, ff))*x[j,ff,k] for k in M , ff in F´ ) <= e[j]
+                  deg_6_7_2[j in C],  sum( f(data, ed(j, ff))*x[j,ff,k] for k in M , ff in F´ if !( (j, ff) in data.E′ ) ) <= e[j]
 
-                  deg_6_9[k in M], sum(x[i, j, k] * (t(data, ed(i, j)) + data.G′.V′[i].service_time) for i in V, j in V if i!=j) <= T
-
+                  deg_6_9[k in M], sum(x[i, j, k] * (t(data, ed(i, j)) + data.G′.V′[i].service_time) for i in V, j in V if (i!=j && !((i, j) in data.E′) ) ) <= T
+                  
                   #prepro[e in L, k in M], x[e[1], e[2], k] == 0
                 end)
     
@@ -84,41 +84,43 @@ function build_model(data::DataGVRP)
 
         for i in V
             for j in V
-                # resource comsuption for the R = 1 
-                # q_1 = 0.5
-                # if (i in W) && (j in W)
-                #     q_1 = 1.0
-                # elseif (i in B) && (j in B)
-                #     q_1 = Q
-                # end
+                if !((i, j) in data.E′)
+                    # resource comsuption for the R = 1 
+                    # q_1 = 0.5
+                    # if (i in W) && (j in W)
+                    #     q_1 = 1.0
+                    # elseif (i in B) && (j in B)
+                    #     q_1 = Q
+                    # end
 
-                # add arcs i - > j
-                arc_id = add_arc!(G, i, j)
-                add_arc_var_mapping!(G, arc_id, x[i, j, k])
-                 
-                if i in F && j in F && i != F[1] && j != F[1]
-                    set_arc_consumption!(G, arc_id, fuel_res_id, β + 1)
-                elseif i in F && j in F && i == F[1] || j == F[1]
-                    set_arc_consumption!(G, arc_id, fuel_res_id,  - f(data,ed(i,j)))
-                else
-                    set_arc_consumption!(G, arc_id, fuel_res_id,  f(data,ed(i,j)))
+                    # add arcs i - > j
+                    arc_id = add_arc!(G, i, j)
+                    add_arc_var_mapping!(G, arc_id, x[i, j, k])
+                     
+                    if i in F && j in F && i != F[1] && j != F[1]
+                        set_arc_consumption!(G, arc_id, fuel_res_id, β + 1)
+                    elseif i in F && j in F && i == F[1] || j == F[1]
+                        set_arc_consumption!(G, arc_id, fuel_res_id,  - f(data,ed(i,j)))
+                    else
+                        set_arc_consumption!(G, arc_id, fuel_res_id,  f(data,ed(i,j)))
+                    end
+
+                    set_arc_consumption!(G, arc_id, time_res_id, ((data.G′.V′[i].service_time + data.G′.V′[j].service_time)/2) + t(data,ed(i,j)))
+                    # add arcs j - > i
+                    
+                    arc_id = add_arc!(G, j, i)
+                    add_arc_var_mapping!(G, arc_id, x[i, j, k])
+
+                    if i in F && j in F && i != F[1] && j != F[1]
+                        set_arc_consumption!(G, arc_id, fuel_res_id, β + 1)
+                    elseif i in F && j in F && i == F[1] || j == F[1]
+                        set_arc_consumption!(G, arc_id, fuel_res_id,  - f(data,ed(i,j)))
+                    else
+                        set_arc_consumption!(G, arc_id, fuel_res_id,  f(data,ed(i,j)))
+                    end
+
+                    set_arc_consumption!(G, arc_id, time_res_id, ((data.G′.V′[i].service_time + data.G′.V′[j].service_time)/2) + t(data,ed(i,j)))
                 end
-
-                set_arc_consumption!(G, arc_id, time_res_id, ((data.G′.V′[i].service_time + data.G′.V′[j].service_time)/2) + t(data,ed(i,j)))
-                # add arcs j - > i
-                
-                arc_id = add_arc!(G, j, i)
-                add_arc_var_mapping!(G, arc_id, x[i, j, k])
-
-                if i in F && j in F && i != F[1] && j != F[1]
-                    set_arc_consumption!(G, arc_id, fuel_res_id, β + 1)
-                elseif i in F && j in F && i == F[1] || j == F[1]
-                    set_arc_consumption!(G, arc_id, fuel_res_id,  - f(data,ed(i,j)))
-                else
-                    set_arc_consumption!(G, arc_id, fuel_res_id,  f(data,ed(i,j)))
-                end
-
-                set_arc_consumption!(G, arc_id, time_res_id, ((data.G′.V′[i].service_time + data.G′.V′[j].service_time)/2) + t(data,ed(i,j)))
             end
         end
         return G
@@ -135,7 +137,7 @@ function build_model(data::DataGVRP)
 
     set_vertex_packing_sets!(gvrp, [[(Graphs[k], i) for k in K] for i in C])
 
-    [define_elementarity_sets_distance_matrix!(gvrp, Graphs[k], [[d(data,ed(i, j)) for i in C] for j in C]) for k in K]
+    [define_elementarity_sets_distance_matrix!(gvrp, Graphs[k], [[d(data,ed(i, j)) for i in C if !((i, j) in data.E′) ] for j in C ] ) for k in K]
     # add_capacity_cut_separator!(gvrp, [ ([(G, i)], 1.0) for i in W], Float64(Q))
 
     set_branching_priority!(gvrp, "x", 1)
@@ -195,7 +197,7 @@ function build_model(data::DataGVRP)
               for j in V 
                 #if i != j && get_value(gvrp.optimizer, x[i, j, k]) > 0.0001 || 
                 #    get_value(gvrp.optimizer, x[j, i, k]) > 0.0001 &&     !visited[j]
-                if i != j && get_value(gvrp.optimizer, x[i, j, k]) > 0.0001 && !visited[j]
+                if i != j && !((i, j) in data.E′) && get_value(gvrp.optimizer, x[i, j, k]) > 0.0001 && !visited[j]
                   visited[j] = true
                   push!(q, j)
                   push!(comp, j)
@@ -211,7 +213,7 @@ function build_model(data::DataGVRP)
               for i in comp
                 if i in C
                   for j in comp
-                    if i != j
+                    if i != j && !((i, j) in data.E′)
                       add_dynamic_constr!(gvrp.optimizer, 
                                           vcat(lhs_vars, [x[i, j, k]]), 
                                           vcat(lhs_coeff, [-1.0]), 
