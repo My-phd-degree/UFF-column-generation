@@ -13,7 +13,6 @@ function build_model(data::DataGVRP)
 
     T = data.T # General time limit
     M = data.M # Set of vehicles
-    
     K = M
     
     ed(i, j) = i < j ? (i, j) : (j, i)
@@ -35,14 +34,23 @@ function build_model(data::DataGVRP)
 
                   deg_6_4[i in C], sum( x[i,j,k] for j in V, k in M if (j!=i && !((i, j) in data.E′) ) ) == 1.0
 
-                  deg_6_6[ [(i, j) for i in C, j in C if (i, j) in data.E′] , k in M], e[j] <= e[i] - f(data, ed(i, j))*x[i,j,k] + data.β*(1.0 - x[i,j,k]) + f(data, ed(j, i))*x[j,i,k]
+                  #[define_elementarity_sets_distance_matrix!(gvrp, Graphs[k], [[d(data,ed(i, j)) for i in C if !((i, j) in data.E′) ] for j in C ] ) for k in K]
+
+                  #if !( (i, j) in data.E′)
+                  #deg_6_6[[[ i in C ] j in C ] k in K ], e[j] <= e[i] - f(data, ed(i, j))*x[i,j,k] + data.β*(1.0 - x[i,j,k]) + f(data, ed(j, i))*x[j,i,k]
+                  #deg_6_6[ [(i, j) for i in C, j in C if (i, j) in data.E′] , k in M], e[j] <= e[i] - f(data, ed(i, j))*x[i,j,k] + data.β*(1.0 - x[i,j,k]) + f(data, ed(j, i))*x[j,i,k]
+
+                  #deg_6_6[ i in C, j in C, k in M], e[j] <= e[i] - f(data, ed(i, j))*x[i,j,k] + data.β*(1.0 - x[i,j,k]) + f(data, ed(j, i))*x[j,i,k]
+
+                  #if !( (i, j) in data.E′)
+                  deg_6_6[ i in C, j in C, k in M], if !( (i, j) in data.E′) e[j] else 0.0 end <=  if !( (i, j) in data.E′) e[i] - f(data, ed(i, j))*x[i,j,k] + data.β*(1.0 - x[i,j,k]) + f(data, ed(j, i))*x[j,i,k] else 0.0 end
 
                   deg_6_7_1[j in C],  e[j] <= data.β - sum( f(data, ed( ff, j))*x[ff,j,k] for k in M , ff in F´ if !( (ff, j) in data.E′ ) )
                   
                   deg_6_7_2[j in C],  sum( f(data, ed(j, ff))*x[j,ff,k] for k in M , ff in F´ if !( (j, ff) in data.E′ ) ) <= e[j]
 
                   deg_6_9[k in M], sum(x[i, j, k] * (t(data, ed(i, j)) + data.G′.V′[i].service_time) for i in V, j in V if (i!=j && !((i, j) in data.E′) ) ) <= T
-                  
+
                   #prepro[e in L, k in M], x[e[1], e[2], k] == 0
                 end)
     
@@ -138,6 +146,7 @@ function build_model(data::DataGVRP)
     set_vertex_packing_sets!(gvrp, [[(Graphs[k], i) for k in K] for i in C])
 
     [define_elementarity_sets_distance_matrix!(gvrp, Graphs[k], [[d(data,ed(i, j)) for i in C if !((i, j) in data.E′) ] for j in C ] ) for k in K]
+
     # add_capacity_cut_separator!(gvrp, [ ([(G, i)], 1.0) for i in W], Float64(Q))
 
     set_branching_priority!(gvrp, "x", 1)
