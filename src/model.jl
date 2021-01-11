@@ -148,9 +148,9 @@ function build_model(data::DataGVRP)
 
     #if !( (i, j) in data.E′)
 
-    set_vertex_packing_sets!(gvrp, [[(Graphs[k], i) for k in K] for i in C])
+    set_vertex_packing_sets!(gvrp, [[(Graphs[k], i) for k in K] for i in V])
 
-    [define_elementarity_sets_distance_matrix!(gvrp, Graphs[k], [[d(data,ed(i, j)) for i in C if !((i, j) in data.E′) ] for j in C ] ) for k in K]
+    [define_elementarity_sets_distance_matrix!(gvrp, Graphs[k], [[d(data,ed(i, j)) for i in V if !((i, j) in data.E′) ] for j in V ] ) for k in K]
 
     #define_elementarity_sets_distance_matrix!(gvrp, Graphs[ [[[d(data,ed(i, j)) for i in C if !((i, j) in data.E′) ] for j in C ] for k in K] ] )
     

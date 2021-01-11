@@ -105,7 +105,8 @@ function readEMHInstance(app::Dict{String,Any})
       data.ε = parse(Float64, split(line, ['/']; limit=0, keepempty=false)[2])
       # Get amount of vehicle
       line = readline(f)
-      data.m = parse(Int64, split(line, ['/']; limit=0, keepempty=false)[2])
+      #data.m = parse(Int64, split(line, ['/']; limit=0, keepempty=false)[2])
+      data.m = length(data.C)
       for k in 1:data.m push!(data.M, k) end
     end
 
