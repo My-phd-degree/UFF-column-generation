@@ -2,7 +2,7 @@ import Unicode
 using Distances
 
 mutable struct Vertex
-    id_vertex::Int
+    id_vertex::Int64
     pos_x::Float64
     pos_y::Float64
     service_time::Float64

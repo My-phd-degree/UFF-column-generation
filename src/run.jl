@@ -86,7 +86,7 @@ function run_gvrp(app::Dict{String,Any})
     if solution_found || app["sol"] != nothing # Is there a solution?
         print_routes(sol)
         #checksolution(data, sol)
-        println("Cost $(sol.cost)")
+        #println("Cost $(sol.cost)")
         checksolution(data, sol)
         if app["out"] != nothing
             writesolution(app["out"], sol)
