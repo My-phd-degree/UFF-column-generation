@@ -109,7 +109,6 @@ function readEMHInstance(app::Dict{String,Any})
       for k in 1:data.m push!(data.M, k) end
     end
 
-
     #read preprocessings
     data.E′ = []
     if haskey(app, "preprocessings") && app["preprocessings"] != nothing
@@ -162,7 +161,7 @@ function readMatheusInstance(app::Dict{String,Any})
       readline(f)
       line = readline(f)
       aux = split(line, [sepChar]; limit=0, keepempty=false)
-      v = Vertex(parse(Int, aux[1]) + 1, parse(Float64, aux[2]), parse(Float64, aux[3]), parse(Float64, aux[4]))
+      v = Vertex(parse(Int64, aux[1]) + 1, parse(Float64, aux[2]), parse(Float64, aux[3]), parse(Float64, aux[4]))
       i = 1
       push!(data.F, i)
       push!(G′.V′, v) 
@@ -177,7 +176,7 @@ function readMatheusInstance(app::Dict{String,Any})
         if length(aux) == 1
           break
         end
-        v = Vertex(parse(Int, aux[1]) + 1, parse(Float64, aux[2]), parse(Float64, aux[3]), parse(Float64, aux[4]))
+        v = Vertex(parse(Int64, aux[1]) + 1, parse(Float64, aux[2]), parse(Float64, aux[3]), parse(Float64, aux[4]))
         push!(data.C, i)
         push!(G′.V′, v) 
         i = i + 1
@@ -191,7 +190,7 @@ function readMatheusInstance(app::Dict{String,Any})
         if length(aux) == 1
           break
         end
-        v = Vertex(parse(Int, aux[1]) + 1, parse(Float64, aux[2]), parse(Float64, aux[3]), parse(Float64, aux[4]))
+        v = Vertex(parse(Int64, aux[1]) + 1, parse(Float64, aux[2]), parse(Float64, aux[3]), parse(Float64, aux[4]))
         push!(data.F, i)
         push!(G′.V′, v) 
         i = i + 1
@@ -209,7 +208,7 @@ function readMatheusInstance(app::Dict{String,Any})
           # read edge
           line = readline(f)
           edge = split(line, [' ', ',']; limit=0, keepempty=false)
-          push!(data.E′, (parse(Int, edge[1]) + 1, parse(Int, edge[2]) + 1))
+          push!(data.E′, (parse(Int64, edge[1]) + 1, parse(Int64, edge[2]) + 1))
         end
       end
     end

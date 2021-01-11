@@ -11,6 +11,10 @@ function build_model(data::DataGVRP)
     F´ = deepcopy(F) 
     popfirst!(F´)
 
+    for f in F´ 
+        println(f)
+    end
+
     T = data.T # General time limit
     M = data.M # Set of vehicles
     K = M
@@ -34,15 +38,6 @@ function build_model(data::DataGVRP)
 
                   deg_6_4[i in C], sum( x[i,j,k] for j in V, k in M if (j!=i && !((i, j) in data.E′) ) ) == 1.0
 
-                  #[define_elementarity_sets_distance_matrix!(gvrp, Graphs[k], [[d(data,ed(i, j)) for i in C if !((i, j) in data.E′) ] for j in C ] ) for k in K]
-
-                  #if !( (i, j) in data.E′)
-                  #deg_6_6[[[ i in C ] j in C ] k in K ], e[j] <= e[i] - f(data, ed(i, j))*x[i,j,k] + data.β*(1.0 - x[i,j,k]) + f(data, ed(j, i))*x[j,i,k]
-                  #deg_6_6[ [(i, j) for i in C, j in C if (i, j) in data.E′] , k in M], e[j] <= e[i] - f(data, ed(i, j))*x[i,j,k] + data.β*(1.0 - x[i,j,k]) + f(data, ed(j, i))*x[j,i,k]
-
-                  #deg_6_6[ i in C, j in C, k in M], e[j] <= e[i] - f(data, ed(i, j))*x[i,j,k] + data.β*(1.0 - x[i,j,k]) + f(data, ed(j, i))*x[j,i,k]
-
-                  #if !( (i, j) in data.E′)
                   deg_6_6[ i in C, j in C, k in M], if !( (i, j) in data.E′) e[j] else 0.0 end <=  if !( (i, j) in data.E′) e[i] - f(data, ed(i, j))*x[i,j,k] + data.β*(1.0 - x[i,j,k]) + f(data, ed(j, i))*x[j,i,k] else 0.0 end
 
                   deg_6_7_1[j in C],  e[j] <= data.β - sum( f(data, ed( ff, j))*x[ff,j,k] for k in M , ff in F´ if !( (ff, j) in data.E′ ) )
@@ -105,23 +100,23 @@ function build_model(data::DataGVRP)
                     arc_id = add_arc!(G, i, j)
                     add_arc_var_mapping!(G, arc_id, x[i, j, k])
                      
-                    if i in F && j in F && i != F[1] && j != F[1]
+                    if i in F´ && j in F´ && i != V[1] && j != V[1]
                         set_arc_consumption!(G, arc_id, fuel_res_id, β + 1)
-                    elseif i in F && j in F && i == F[1] || j == F[1]
+                    elseif i in F´ && j in F´ && i == V[1] || j == V[1]
                         set_arc_consumption!(G, arc_id, fuel_res_id,  - f(data,ed(i,j)))
                     else
                         set_arc_consumption!(G, arc_id, fuel_res_id,  f(data,ed(i,j)))
                     end
 
                     set_arc_consumption!(G, arc_id, time_res_id, ((data.G′.V′[i].service_time + data.G′.V′[j].service_time)/2) + t(data,ed(i,j)))
+
                     # add arcs j - > i
-                    
                     arc_id = add_arc!(G, j, i)
                     add_arc_var_mapping!(G, arc_id, x[i, j, k])
 
-                    if i in F && j in F && i != F[1] && j != F[1]
+                    if i in F´ && j in F´ && i != V[1] && j != V[1]
                         set_arc_consumption!(G, arc_id, fuel_res_id, β + 1)
-                    elseif i in F && j in F && i == F[1] || j == F[1]
+                    elseif i in F´ && j in F´ && i == V[1] || j == V[1]
                         set_arc_consumption!(G, arc_id, fuel_res_id,  - f(data,ed(i,j)))
                     else
                         set_arc_consumption!(G, arc_id, fuel_res_id,  f(data,ed(i,j)))
@@ -143,9 +138,23 @@ function build_model(data::DataGVRP)
       add_graph!(gvrp, G)
     end
 
+    #[define_elementarity_sets_distance_matrix!(gvrp, Graphs[k], [[d(data,ed(i, j)) for i in C if !((i, j) in data.E′) ] for j in C ] ) for k in K]
+
+    #if !( (i, j) in data.E′)
+    #deg_6_6[[[ i in C ] j in C ] k in K ], e[j] <= e[i] - f(data, ed(i, j))*x[i,j,k] + data.β*(1.0 - x[i,j,k]) + f(data, ed(j, i))*x[j,i,k]
+    #deg_6_6[ [(i, j) for i in C, j in C if (i, j) in data.E′] , k in M], e[j] <= e[i] - f(data, ed(i, j))*x[i,j,k] + data.β*(1.0 - x[i,j,k]) + f(data, ed(j, i))*x[j,i,k]
+
+    #deg_6_6[ i in C, j in C, k in M], e[j] <= e[i] - f(data, ed(i, j))*x[i,j,k] + data.β*(1.0 - x[i,j,k]) + f(data, ed(j, i))*x[j,i,k]
+
+    #if !( (i, j) in data.E′)
+
     set_vertex_packing_sets!(gvrp, [[(Graphs[k], i) for k in K] for i in C])
 
-    [define_elementarity_sets_distance_matrix!(gvrp, Graphs[k], [[d(data,ed(i, j)) for i in C if !((i, j) in data.E′) ] for j in C ] ) for k in K]
+    #[define_elementarity_sets_distance_matrix!(gvrp, Graphs[k], [[d(data,ed(i, j)) for i in C if !((i, j) in data.E′) ] for C in V ] ) for k in K]
+
+    #define_elementarity_sets_distance_matrix!(gvrp, Graphs[ [[[d(data,ed(i, j)) for i in C if !((i, j) in data.E′) ] for j in C ] for k in K] ] )
+    
+    #define_elementarity_sets_distance_matrix!(gvrp, Graphs[ [[[d(data,ed(i, j)) for i in C if i!=j ] for j in C ] for k in K] ] )
 
     # add_capacity_cut_separator!(gvrp, [ ([(G, i)], 1.0) for i in W], Float64(Q))
 
@@ -170,10 +179,10 @@ function build_model(data::DataGVRP)
             end
         end
 
-        s = F[1]
+        s = V[1]
         for c in C
             maxFlow, flows, cut = SparseMaxFlowMinCut.find_maxflow_mincut(SparseMaxFlowMinCut.Graph(n, g), s, c)
-#            if (maxFlow / M) > (T - 0.001) && !in(cut, added_cuts)
+            #if (maxFlow / M) > (T - 0.001) && !in(cut, added_cuts)
             if (maxFlow / M) < (2 - 0.001) && !in(cut, added_cuts)
                 set1, set2 = [], []
                 [cut[i] == 1 ? push!(set1, i) : push!(set2, i) for i in 1:n]
@@ -181,7 +190,7 @@ function build_model(data::DataGVRP)
                 lhs_vars = [x[i, j, k] for i in set2 for j in set1 for k in K]
                 lhs_coeff = [1.0 for i in set2 for j in set1 for k in K]
 
-#                add_dynamic_constr!(gvrp.optimizer, lhs_vars, lhs_coeff, >=, 2.0 * floor(ceil(sum(data.G′.V′[i].service_time for i in (c in set1 ? set1 : set2) if i in C)/T)), "mincut")
+                #add_dynamic_constr!(gvrp.optimizer, lhs_vars, lhs_coeff, >=, 2.0 * floor(ceil(sum(data.G′.V′[i].service_time for i in (c in set1 ? set1 : set2) if i in C)/T)), "mincut")
                 add_dynamic_constr!(gvrp.optimizer, lhs_vars, lhs_coeff, >=, 2.0, "mincut")
 
                 push!(added_cuts, cut)
@@ -190,9 +199,9 @@ function build_model(data::DataGVRP)
         """
         # for each route
         for k in K
-          s = F[1]
+          s = V[1]
           visited = [false for i in V]
-          for c in C
+          for c in V
             if visited[c]
               continue
             end
@@ -206,7 +215,7 @@ function build_model(data::DataGVRP)
               for j in V 
                 #if i != j && get_value(gvrp.optimizer, x[i, j, k]) > 0.0001 || 
                 #    get_value(gvrp.optimizer, x[j, i, k]) > 0.0001 &&     !visited[j]
-                if i != j && !((i, j) in data.E′) && get_value(gvrp.optimizer, x[i, j, k]) > 0.0001 && !visited[j]
+                if i != j && !((i, j) in data.E′) && ( get_value(gvrp.optimizer, x[i, j, k]) > 0.0001 || get_value(gvrp.optimizer, x[j, i, k]) > 0.0001 ) && !visited[j]
                   visited[j] = true
                   push!(q, j)
                   push!(comp, j)
@@ -217,10 +226,10 @@ function build_model(data::DataGVRP)
             
             if !(s in comp) && length(comp) > 1
               println("Route $k S: ", comp)
-              lhs_vars = [x[i, j, k] for i in comp for j in V if !(j in comp)]
-              lhs_coeff = [1.0 for i in comp for j in V if !(j in comp)]
+              lhs_vars = [x[i, j, k] for i in comp for j in V if !(j in comp && !((i, j) in data.E′) )]
+              lhs_coeff = [1.0 for i in comp for j in V if !(j in comp && !((i, j) in data.E′) )]
               for i in comp
-                if i in C
+                if i in V
                   for j in comp
                     if i != j && !((i, j) in data.E′)
                       add_dynamic_constr!(gvrp.optimizer, 
