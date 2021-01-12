@@ -43,6 +43,11 @@ end
 
 # GEO distance
 function GEO_dist(u::Vertex, v::Vertex)
+    #if (u.id_vertex == 2 && v.id_vertex == 6)
+    #  println("............................................")
+    #  println(v.pos_x," ",u.pos_x)
+    #  println(v.pos_y," ",u.pos_y)
+    #end
     #    return haversine((v.pos_x, v.pos_y), (u.pos_x, u.pos_y), 4182.44949)
     x_sq = (v.pos_x - u.pos_x)^2
     y_sq = (v.pos_y - u.pos_y)^2
@@ -118,7 +123,7 @@ function readEMHInstance(app::Dict{String,Any})
           # read edge
           line = readline(f)
           edge = split(line, [' ', ',']; limit=0, keepempty=false)
-          push!(data.E′, (parse(Int64, edge[1]) + 1, parse(Int64, edge[2]) + 1))
+          push!(data.E′, (parse(Int64, edge[1]) , parse(Int64, edge[2]) ))
         end
       end
     end
@@ -221,8 +226,8 @@ function readMatheusInstance(app::Dict{String,Any})
           if i < j && !((a.id_vertex, b.id_vertex) in data.E′)
             vertices = data.G′.V′
             push!(G′.E, e) # add edge e
-            #data.G′.cost[e] = distance(vertices[e[1]], vertices[e[2]])
-            data.G′.cost[e] = EUC_dist(vertices[e[1]], vertices[e[2]])
+            data.G′.cost[e] = distance(data,e)
+            #data.G′.cost[e] = EUC_dist(vertices[e[1]], vertices[e[2]])
         end
       end
     end

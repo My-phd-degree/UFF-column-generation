@@ -150,7 +150,9 @@ function build_model(data::DataGVRP)
 
     set_vertex_packing_sets!(gvrp, [[(Graphs[k], i) for k in K] for i in V])
 
-    [define_elementarity_sets_distance_matrix!(gvrp, Graphs[k], [[d(data,ed(i, j)) for i in V if !((i, j) in data.E′) ] for j in V ] ) for k in K]
+    #[define_elementarity_sets_distance_matrix!(gvrp, Graphs[k], [[d(data,ed(i, j)) for i in V if !((i, j) in data.E′) ] for j in V ] ) for k in K]
+
+    [define_elementarity_sets_distance_matrix!(gvrp, Graphs[k], [[ ( ((i, j) in data.E′) ) ? 999999.999 : d(data,ed(i, j) ) for i in V ] for j in V ] ) for k in K]
 
     #define_elementarity_sets_distance_matrix!(gvrp, Graphs[ [[[d(data,ed(i, j)) for i in C if !((i, j) in data.E′) ] for j in C ] for k in K] ] )
     
@@ -161,42 +163,46 @@ function build_model(data::DataGVRP)
     set_branching_priority!(gvrp, "x", 1)
 
     function maxflow_mincut_callback()
-        println("OKAY 7")
+        println("find sets ...")
         M = 100000
         added_cuts = []
 
         # for all routes
-        """g = SparseMaxFlowMinCut.ArcFlow[]
+        g = SparseMaxFlowMinCut.ArcFlow[]
         for i in V
             for j in V 
-                value::Float64 = sum(get_value(gvrp.optimizer, x[i, j, k]) for k in K)
-                #            value::Float64 = get_value(gvrp.optimizer, x[e] * t(data, ee))
-                if value > 0.0001
-                    flow_::Int = trunc(floor(value, digits=5) * M)
-                    push!(g, SparseMaxFlowMinCut.ArcFlow(i, j, flow_)) # arc i -> j
-                    push!(g, SparseMaxFlowMinCut.ArcFlow(j, i, flow_)) # arc j -> i
+                if !((i, j) in data.E′)
+                    value::Float64 = sum(get_value(gvrp.optimizer, x[i, j, k]) for k in K)
+                    #            value::Float64 = get_value(gvrp.optimizer, x[e] * t(data, ee))
+                    if value > 0.0001
+                        flow_::Int = trunc(floor(value, digits=5) * M)
+                        push!(g, SparseMaxFlowMinCut.ArcFlow(i, j, flow_)) # arc i -> j
+                        push!(g, SparseMaxFlowMinCut.ArcFlow(j, i, flow_)) # arc j -> i
+                    end
                 end
             end
         end
 
         s = V[1]
-        for c in C
-            maxFlow, flows, cut = SparseMaxFlowMinCut.find_maxflow_mincut(SparseMaxFlowMinCut.Graph(n, g), s, c)
-            #if (maxFlow / M) > (T - 0.001) && !in(cut, added_cuts)
-            if (maxFlow / M) < (2 - 0.001) && !in(cut, added_cuts)
-                set1, set2 = [], []
-                [cut[i] == 1 ? push!(set1, i) : push!(set2, i) for i in 1:n]
+        for i in V
+            for j in V
+                maxFlow, flows, cut = SparseMaxFlowMinCut.find_maxflow_mincut(SparseMaxFlowMinCut.Graph(n, g), s, j)
+                #if (maxFlow / M) > (T - 0.001) && !in(cut, added_cuts)
+                if !((i, j) in data.E′) && (maxFlow / M) < (2 - 0.001) && !in(cut, added_cuts)
+                    set1, set2 = [], []
+                    [cut[i] == 1 ? push!(set1, i) : push!(set2, i) for i in 1:n]
 
-                lhs_vars = [x[i, j, k] for i in set2 for j in set1 for k in K]
-                lhs_coeff = [1.0 for i in set2 for j in set1 for k in K]
+                    lhs_vars = [x[i, j, k] for i in set2 for j in set1 for k in K]
+                    lhs_coeff = [1.0 for i in set2 for j in set1 for k in K]
 
-                #add_dynamic_constr!(gvrp.optimizer, lhs_vars, lhs_coeff, >=, 2.0 * floor(ceil(sum(data.G′.V′[i].service_time for i in (c in set1 ? set1 : set2) if i in C)/T)), "mincut")
-                add_dynamic_constr!(gvrp.optimizer, lhs_vars, lhs_coeff, >=, 2.0, "mincut")
+                    #add_dynamic_constr!(gvrp.optimizer, lhs_vars, lhs_coeff, >=, 2.0 * floor(ceil(sum(data.G′.V′[i].service_time for i in (c in set1 ? set1 : set2) if i in C)/T)), "mincut")
+                    add_dynamic_constr!(gvrp.optimizer, lhs_vars, lhs_coeff, >=, 2.0, "mincut")
 
-                push!(added_cuts, cut)
+                    push!(added_cuts, cut)
+                end
             end
         end
-        """
+
         # for each route
         for k in K
           s = V[1]
@@ -245,11 +251,10 @@ function build_model(data::DataGVRP)
             end
           end
         end
-        """
+        
         if length(added_cuts) > 0 
           println(">>>>> Add min cuts : ", length(added_cuts), " cut(s) added") 
         end
-        """
     end
     add_cut_callback!(gvrp, maxflow_mincut_callback, "mincut")
     return (gvrp, x)
