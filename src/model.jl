@@ -70,8 +70,8 @@ function build_model(data::DataGVRP)
     function build_graph(k::Int64)
         v_source = v_sink = 0
         L = length(F´) 
-        #L = length(C)
         U = length(V) # max and min number of paths is equal to number of AFSs
+        #L = length(C)
 
         #L = 0 
         #U = length(C)
@@ -170,18 +170,25 @@ function build_model(data::DataGVRP)
       add_graph!(gvrp, G)
     end
 
+    #Não visita a aresta entre um AFS e deposito mais de duas vezes
+
     #set_vertex_packing_sets!(gvrp, [[(Graphs[k], i) for i in C´] for k in K])
     set_vertex_packing_sets!(gvrp, [[(Graphs[k], i) for k in K] for i in V])
 
     add_capacity_cut_separator!(gvrp, [ ([(Graphs[k], i) for k in K], 1.0) for i in C], Float64( length(C) ))
 
     FF = deepcopy(V)
+    #FF = deepcopy(F´)
 
-    [define_elementarity_sets_distance_matrix!(gvrp, Graphs[k], [[d(data,ed(i, j)) for i in FF ] for j in V ] ) for k in K]
-    
+    [define_elementarity_sets_distance_matrix!(gvrp, Graphs[k], [[d(data,ed(i, j)) for i in FF ] for j in FF ] ) for k in K]
+    # ->                                    L = length(F´) && U = length(V)
+
+    #[define_elementarity_sets_distance_matrix!(gvrp, Graphs[k], [[( ( ((i, j) in data.E′) || i==j ) ? -999999.999 : d(data,ed(i, j)) ) for i in FF ] for j in FF ] ) for k in K]
+    # ->                                    L = 0  && U = length(C)
+
+    #----------------------------------------------------------------------------------
     #[set_additional_vertex_elementarity_sets!(gvrp, [(Graphs[k],[f]) for k in K]) for f in V]
-
-    #[define_elementarity_sets_distance_matrix!(gvrp, Graphs[k], [[ ( ((i, j) in data.E′) ) ? 999999.999 : d(data,ed(i, j) ) for i in V ] for j in V ] ) for k in K]
+    #----------------------------------------------------------------------------------
 
     #[define_elementarity_sets_distance_matrix!(gvrp, Graphs[k], [[ ( ((i, j) in data.E′) ) ? 999999.999 : d(data,ed(i, j) ) for i in FF ] for j in FF ] ) for k in K]
 
