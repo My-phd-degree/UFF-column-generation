@@ -96,17 +96,17 @@ function build_model(data::DataGVRP)
         for f in F´ # setting the arcs between source, sink, and black vertices
             # source -> i(AFS)
             arc_id = add_arc!(G, v_source, f)
-            set_arc_consumption!(G, arc_id, time_res_id, data.G′.V′[f].service_time/2)
+            set_arc_consumption!(G, arc_id, time_res_id, data.G′.V′[f].service_time/2.0)
             set_arc_consumption!(G, arc_id, fuel_res_id, 0.0)
             # i(AFS) -> sink
             arc_id = add_arc!(G, f, v_sink)
-            set_arc_consumption!(G, arc_id, time_res_id, data.G′.V′[f].service_time/2)
+            set_arc_consumption!(G, arc_id, time_res_id, data.G′.V′[f].service_time/2.0)
             set_arc_consumption!(G, arc_id, fuel_res_id, 0.0)
         end
 
         for i in V
             for j in V
-                if !((i, j) in data.E′) && i!=j
+                if !((i, j) in data.E′) && i != j
                     # resource comsuption for the R = 1 
                     # q_1 = 0.5
                     # if (i in W) && (j in W)
@@ -120,45 +120,50 @@ function build_model(data::DataGVRP)
                     arc_id = add_arc!(G, i, j)
                     add_arc_var_mapping!(G, arc_id, x[i, j, k])
                     
-                    if Q > β
-                        Q = Q - β
-                    else
-                        Q = 999999.999
-                        #Q = e[i] - f(data,ed(i,j))
-                    end
+                    #if Q > β
+                    #    Q = Q - β
+                    #else
+                    #    Q = 999999.999
+                    #end
 
-                    #println(i , " - " , j)
-                    
+                    # (AFs,AFs)
                     if i in F´ && j in F´ && i != V[1] && j != V[1]
-                        set_arc_consumption!(G, arc_id, fuel_res_id, Q)                  # (AFs,AFs)
+                        set_arc_consumption!(G, arc_id, fuel_res_id, Q)
+                    # (1,AFs)
                     elseif i in F´ && j in F´ && i == V[1] && j != V[1]
-                        set_arc_consumption!(G, arc_id, fuel_res_id,  Q )                # (1,AFs)
+                        set_arc_consumption!(G, arc_id, fuel_res_id,  Q )
+                    # (AFs,1)
                     elseif i in F´ && j in F´ && i != V[1] && j == V[1]
-                        set_arc_consumption!(G, arc_id, fuel_res_id,  Q )                # (AFs,1)
+                        set_arc_consumption!(G, arc_id, fuel_res_id,  Q )
                     else
                         set_arc_consumption!(G, arc_id, fuel_res_id,  f(data,ed(i,j)))
                     end
-                    """
-                    set_arc_consumption!(G, arc_id, fuel_res_id,  f(data,ed(i,j)))
-                    """
+                    #set_arc_consumption!(G, arc_id, fuel_res_id,  f(data,ed(i,j)))
+                    
+                    #set_arc_consumption!(G, arc_id, time_res_id, ((data.G′.V′[i].service_time + data.G′.V′[j].service_time)/2) + t(data,ed(i,j)))
                     set_arc_consumption!(G, arc_id, time_res_id, ((data.G′.V′[i].service_time + data.G′.V′[j].service_time)/2) + t(data,ed(i,j)))
+                    
+                    #######################################################
 
                     # add arcs j - > i
                     arc_id = add_arc!(G, j, i)
                     add_arc_var_mapping!(G, arc_id, x[i, j, k])
 
+                    # (AFs,AFs)
                     if i in F´ && j in F´ && i != V[1] && j != V[1]
-                        set_arc_consumption!(G, arc_id, fuel_res_id, Q)                  # (AFs,AFs)
+                        set_arc_consumption!(G, arc_id, fuel_res_id, Q)
+                    # (1,AFs)
                     elseif i in F´ && j in F´ && i == V[1] && j != V[1]
-                        set_arc_consumption!(G, arc_id, fuel_res_id,  Q )                # (1,AFs)
+                        set_arc_consumption!(G, arc_id, fuel_res_id,  Q )
+                    # (AFs,1)
                     elseif i in F´ && j in F´ && i != V[1] && j == V[1]
-                        set_arc_consumption!(G, arc_id, fuel_res_id,  Q )                # (AFs,1)
+                        set_arc_consumption!(G, arc_id, fuel_res_id,  Q )
                     else
                         set_arc_consumption!(G, arc_id, fuel_res_id,  f(data,ed(i,j)))
                     end
-                    """
-                    set_arc_consumption!(G, arc_id, fuel_res_id,  f(data,ed(i,j)))
-                    """
+                    #set_arc_consumption!(G, arc_id, fuel_res_id,  f(data,ed(i,j)))
+
+                    #set_arc_consumption!(G, arc_id, time_res_id, t(data,(i,j)))
                     set_arc_consumption!(G, arc_id, time_res_id, ((data.G′.V′[i].service_time + data.G′.V′[j].service_time)/2) + t(data,ed(i,j)))
                 end
             end
@@ -188,6 +193,9 @@ function build_model(data::DataGVRP)
     #FF = deepcopy(F´)
     #popfirst!(F´)
     
+    [define_elementarity_sets_distance_matrix!(gvrp, Graphs[k], [[d(data,ed(i, j)) for i in C] for j in C]) for k in K]
+    # ->                                    L = length(F´) && U = length(V)
+
     #[define_elementarity_sets_distance_matrix!(gvrp, Graphs[k], [[d(data,ed(i, j)) for i in FF ] for j in FF ] ) for k in K]
     # ->                                    L = length(F´) && U = length(V)
 

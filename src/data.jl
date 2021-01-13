@@ -245,9 +245,9 @@ function readMatheusInstance(app::Dict{String,Any})
 end
 
 edges(data::DataGVRP) = data.G′.E # return set of arcs
-d(data,e) = (e[1] != e[2]) ? data.G′.cost[e] : 0.0 # cost of the edge e
-f(data, e) = d(data, e) * data.ρ # fuel of the arc a 
-t(data, e) = d(data, e) / data.ε # time of the arc a 
+d(data,e) = (e[1] != e[2] && !((e[1], e[2]) in data.E′) ) ? data.G′.cost[e] : 0.0 # cost of the edge e
+f(data, e) = (e[1] != e[2] && !((e[1], e[2]) in data.E′) ) ? d(data, e) * data.ρ : 0.0 # fuel of the arc a 
+t(data, e) = (e[1] != e[2] && !((e[1], e[2]) in data.E′) ) ? d(data, e) / data.ε : 0.0 # time of the arc a 
 dimension(data::DataGVRP) = length(data.G′.V′) # return number of vertices
 nb_vertices(data::DataGVRP) = length(vertices(data))
 
