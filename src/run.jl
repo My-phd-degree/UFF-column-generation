@@ -1,4 +1,7 @@
 using VrpSolver, JuMP, ArgParse
+import Pkg
+Pkg.add("Distances")
+
 # using CPLEX
 include("data.jl")
 include("model.jl")

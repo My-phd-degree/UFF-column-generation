@@ -21,6 +21,7 @@ mutable struct DataGVRP
     C::Array{Int64} # Customers nodes
     M::Array{Int64} # Vehicles IDs
     E′::Array{Tuple{Int64,Int64}}
+    FM::Array{Tuple{Int64,Int64}}
     β::Float64 # Total distance between two consecutive black vertices
     T::Float64 # Route time limit
     ρ::Float64 # Vehicle fuel comsumption rate
@@ -65,7 +66,7 @@ contains(p, s) = findnext(s, p, 1) != nothing
 
 function readEMHInstance(app::Dict{String,Any})
     G′ = InputGraph([], [], Dict())
-    data = DataGVRP(G′, [], [], [], [], 0.0, 0.0, 0.0, 0.0, 0)
+    data = DataGVRP(G′, [], [], [], [], [], 0.0, 0.0, 0.0, 0.0, 0)
 
     open(app["instance"]) do f
       # Ignore header
@@ -112,7 +113,15 @@ function readEMHInstance(app::Dict{String,Any})
       line = readline(f)
       #data.m = parse(Int64, split(line, ['/']; limit=0, keepempty=false)[2])
       data.m = length(data.C)
-      for k in 1:data.m push!(data.M, k) end
+      
+      for k in 1:data.m 
+        push!(data.M, k)
+        #push!(data.FM, data.m)
+        #for f in 0:length(F)-1
+        #  push!(data.FM[k], length(F)-1 )
+        #end
+      end
+
     end
 
     #read preprocessings
@@ -123,7 +132,7 @@ function readEMHInstance(app::Dict{String,Any})
           # read edge
           line = readline(f)
           edge = split(line, [' ', ',']; limit=0, keepempty=false)
-          push!(data.E′, (parse(Int64, edge[1]) , parse(Int64, edge[2]) ))
+          push!(data.E′, (parse(Int64, edge[1]) + 1, parse(Int64, edge[2]) + 1))
         end
       end
     end
@@ -143,7 +152,7 @@ end
 
 function readMatheusInstance(app::Dict{String,Any})
     G′ = InputGraph([], [], Dict())
-    data = DataGVRP(G′, [], [], [], [], 0.0, 0.0, 0.0, 0.0, 0)
+    data = DataGVRP(G′, [], [], [], [], [], 0.0, 0.0, 0.0, 0.0, 0)
     sepChar = ';'
     open(app["instance"]) do f
       # vehicle data
