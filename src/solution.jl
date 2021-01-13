@@ -45,7 +45,7 @@ function getsolution(data::DataGVRP, optimizer::VrpOptimizer, x, objval, app::Di
     visited = [false for i in V]
     for i in V
       for j in V
-        if visited[j] continue end
+        #if visited[j] continue end
         if i != j && !((i, j) in data.E′)
           val = get_value(optimizer, x[i, j, k])
           if val > 0.5
@@ -64,11 +64,11 @@ function getsolution(data::DataGVRP, optimizer::VrpOptimizer, x, objval, app::Di
               print("( $i - $j ) ", i, j)
             end
              
-            visited[j] = true
-            i = j
-            j = 0
+            #visited[j] = true
+            #i = j
+            #j = 0
             #visited[i] = true
-            continue
+            #continue
           end
         end
       end
