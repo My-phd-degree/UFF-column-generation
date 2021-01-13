@@ -127,11 +127,14 @@ function build_model(data::DataGVRP)
                         #Q = e[i] - f(data,ed(i,j))
                     end
 
+                    #println(i , " - " , j)
+                    
                     if i in F´ && j in F´ && i != V[1] && j != V[1]
-                        set_arc_consumption!(G, arc_id, fuel_res_id, β + 1)
-                    elseif i in F´ && j in F´ && i == V[1] || j == V[1]
-                        println(i , " - " , j)
-                        set_arc_consumption!(G, arc_id, fuel_res_id,  - f(data,ed(i,j)))
+                        set_arc_consumption!(G, arc_id, fuel_res_id, Q)                  # (AFs,AFs)
+                    elseif i in F´ && j in F´ && i == V[1] && j != V[1]
+                        set_arc_consumption!(G, arc_id, fuel_res_id,  Q )                # (1,AFs)
+                    elseif i in F´ && j in F´ && i != V[1] && j == V[1]
+                        set_arc_consumption!(G, arc_id, fuel_res_id,  Q )                # (AFs,1)
                     else
                         set_arc_consumption!(G, arc_id, fuel_res_id,  f(data,ed(i,j)))
                     end
@@ -145,9 +148,11 @@ function build_model(data::DataGVRP)
                     add_arc_var_mapping!(G, arc_id, x[i, j, k])
 
                     if i in F´ && j in F´ && i != V[1] && j != V[1]
-                        set_arc_consumption!(G, arc_id, fuel_res_id, β + 1)
-                    elseif i in F´ && j in F´ && i == V[1] || j == V[1]
-                        set_arc_consumption!(G, arc_id, fuel_res_id,  - f(data,ed(i,j)))
+                        set_arc_consumption!(G, arc_id, fuel_res_id, Q)                  # (AFs,AFs)
+                    elseif i in F´ && j in F´ && i == V[1] && j != V[1]
+                        set_arc_consumption!(G, arc_id, fuel_res_id,  Q )                # (1,AFs)
+                    elseif i in F´ && j in F´ && i != V[1] && j == V[1]
+                        set_arc_consumption!(G, arc_id, fuel_res_id,  Q )                # (AFs,1)
                     else
                         set_arc_consumption!(G, arc_id, fuel_res_id,  f(data,ed(i,j)))
                     end
@@ -172,23 +177,26 @@ function build_model(data::DataGVRP)
 
     #Não visita a aresta entre um AFS e deposito mais de duas vezes
 
-    #set_vertex_packing_sets!(gvrp, [[(Graphs[k], i) for i in C´] for k in K])
-    set_vertex_packing_sets!(gvrp, [[(Graphs[k], i) for k in K] for i in V])
+    #set_vertex_packing_sets!(gvrp, [[(Graphs[k], i) for k in K] for i in V])
+    set_vertex_packing_sets!(gvrp, [[(Graphs[k], i) for k in K] for i in C])
+    #set_vertex_packing_sets!(gvrp, [[(Graphs[k], i) for i in C] for k in K])
 
-    add_capacity_cut_separator!(gvrp, [ ([(Graphs[k], i) for k in K], 1.0) for i in C], Float64( length(C) ))
+    #add_capacity_cut_separator!(gvrp, [ ([(Graphs[k], i) for k in K], 1.0) for i in C], Float64( length(C) ))
 
     FF = deepcopy(V)
+    
     #FF = deepcopy(F´)
-
-    [define_elementarity_sets_distance_matrix!(gvrp, Graphs[k], [[d(data,ed(i, j)) for i in FF ] for j in FF ] ) for k in K]
+    #popfirst!(F´)
+    
+    #[define_elementarity_sets_distance_matrix!(gvrp, Graphs[k], [[d(data,ed(i, j)) for i in FF ] for j in FF ] ) for k in K]
     # ->                                    L = length(F´) && U = length(V)
 
     #[define_elementarity_sets_distance_matrix!(gvrp, Graphs[k], [[( ( ((i, j) in data.E′) || i==j ) ? -999999.999 : d(data,ed(i, j)) ) for i in FF ] for j in FF ] ) for k in K]
     # ->                                    L = 0  && U = length(C)
 
-    #----------------------------------------------------------------------------------
-    #[set_additional_vertex_elementarity_sets!(gvrp, [(Graphs[k],[f]) for k in K]) for f in V]
-    #----------------------------------------------------------------------------------
+    #-------------------------------------------------------------------------------------------
+    #[set_additional_vertex_elementarity_sets!(gvrp, [(Graphs[k],[f]) for k in K]) for f in V] #
+    #-------------------------------------------------------------------------------------------
 
     #[define_elementarity_sets_distance_matrix!(gvrp, Graphs[k], [[ ( ((i, j) in data.E′) ) ? 999999.999 : d(data,ed(i, j) ) for i in FF ] for j in FF ] ) for k in K]
 

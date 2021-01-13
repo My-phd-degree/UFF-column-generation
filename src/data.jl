@@ -1,5 +1,5 @@
 import Unicode
-using Distances
+#using Distances
 
 mutable struct Vertex
     id_vertex::Int64

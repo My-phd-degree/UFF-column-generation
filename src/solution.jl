@@ -1,5 +1,5 @@
-import Pkg; 
-Pkg.add("Crayons")
+#import Pkg; 
+#Pkg.add("Crayons")
 using Crayons
 using Crayons.Box
 
