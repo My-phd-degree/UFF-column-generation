@@ -139,14 +139,14 @@ function readEMHInstance(app::Dict{String,Any})
 
     for i in vertices(data)
       for j in vertices(data) # add arcs between vertices
-        e = (i, j)
-        if haskey(app, "preprocessings") && app["preprocessings"] != nothing
-          if i < j && !((i, j) in data.E′)
-            println("*****************")
-            push!(G′.E, e) # add edge e
-            data.G′.cost[e] = distance(data, e)
-          end
-        elseif i < j
+        #if haskey(app, "preprocessings") && app["preprocessings"] != nothing
+        #  if i < j && !((i, j) in data.E′)
+        #    println("*****************")
+        #    push!(G′.E, e) # add edge e
+        #    data.G′.cost[e] = distance(data, e)
+        #  end
+        if i < j
+            e = (i, j)
             push!(G′.E, e) # add edge e
             data.G′.cost[e] = distance(data, e)
         end
@@ -250,16 +250,13 @@ function readMatheusInstance(app::Dict{String,Any})
     return data
 end
 
+#&& !((e[1], e[2]) in data.E′) 
 edges(data::DataGVRP) = data.G′.E # return set of arcs
-d(data,e) = (e[1] != e[2] && !((e[1], e[2]) in data.E′) ) ? data.G′.cost[e] : 0.0 # cost of the edge e
-f(data,e) = (e[1] != e[2] && !((e[1], e[2]) in data.E′) ) ? d(data, e) * data.ρ : 0.0 # fuel of the arc a 
-t(data,e) = (e[1] != e[2] && !((e[1], e[2]) in data.E′) ) ? d(data, e) / data.ε : 0.0 # time of the arc a 
+d(data,e) = (e[1] != e[2] ) ? data.G′.cost[e] : 0.0 # cost of the edge e
+f(data,e) = (e[1] != e[2] ) ? d(data, e) * data.ρ : 0.0 # fuel of the arc a 
+t(data,e) = (e[1] != e[2] ) ? d(data, e) / data.ε : 0.0 # time of the arc a 
 dimension(data::DataGVRP) = length(data.G′.V′) # return number of vertices
 nb_vertices(data::DataGVRP) = length(vertices(data))
-
-d2(data,e) = (e[1] < e[2] ) ? data.G′.cost[e] : 0.0 # cost of the edge e
-f2(data,e) = (e[1] < e[2] ) ? d2(data, e) * data.ρ : 0.0 # fuel of the arc a 
-t2(data,e) = (e[1] < e[2] ) ? d2(data, e) / data.ε : 0.0 
 
 # return incident edges of i
 function δ(data::DataGVRP, i::Integer)

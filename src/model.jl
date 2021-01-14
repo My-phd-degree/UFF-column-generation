@@ -36,7 +36,6 @@ function build_model(data::DataGVRP)
     println("-------")
 
     ed(i, j) = i < j ? (i, j) : (j, i)
-    ed2(i, j) = i < j ? (i, j) : (j, i)
 
     # Formulation
     gvrp = VrpModel()
@@ -56,9 +55,9 @@ function build_model(data::DataGVRP)
 
                   deg_6_6[ i in C, j in C, k in M], if !( (i, j) in data.E′) e[j] else 0.0 end <=  if !( (i, j) in data.E′) e[i] - f(data, ed(i, j))*x[i,j,k] + data.β*(1.0 - x[i,j,k]) + f(data, ed(j, i))*x[j,i,k] else 0.0 end
 
-                  deg_6_7_1[j in C],  e[j] <= data.β - sum( f(data, ed( ff, j))*x[ff,j,k] for k in M , ff in F´ if !( (ff, j) in data.E′ ) )
+                  deg_6_7_1[j in C],  e[j] <= data.β - sum( f(data, ed( ff, j))*x[ff,j,k] for k in M , ff in data.F if !( (ff, j) in data.E′ ) )
                   
-                  deg_6_7_2[j in C],  sum( f(data, ed(j, ff))*x[j,ff,k] for k in M , ff in F´ if !( (j, ff) in data.E′ ) ) <= e[j]
+                  deg_6_7_2[j in C],  sum( f(data, ed(j, ff))*x[j,ff,k] for k in M , ff in data.F if !( (j, ff) in data.E′ ) ) <= e[j]
 
                   deg_6_9[k in M], sum(x[i, j, k] * (t(data, ed(i, j)) + data.G′.V′[i].service_time) for i in V, j in V if (i!=j && !((i, j) in data.E′) ) ) <= T
 
@@ -175,12 +174,14 @@ function build_model(data::DataGVRP)
 
     function build_graph2()
         v_source = v_sink = 0
-        L = length(F´) 
+        #L = length(F´) 
         #U = length(V) # max and min number of paths is equal to number of AFSs
         #L = length(C)
 
         #L = 0 
-        U = length(C)
+        #U = length(C)
+
+        L = U = length(F´)
 
         # node ids of G from 0 to |V|
         G = VrpGraph(gvrp, V′, v_source, v_sink, (L, U))
@@ -231,21 +232,21 @@ function build_model(data::DataGVRP)
                             set_arc_consumption!(G, arc_id, fuel_res_id, β + 1)
                         # (1, AFs) ou (AFs, 1) 
                         elseif i in F´ && j in F´ && i == V[1] || j == V[1]
-                            set_arc_consumption!(G, arc_id, fuel_res_id,  - f(data,ed2(i,j)) )
+                            set_arc_consumption!(G, arc_id, fuel_res_id,  - f(data,ed(i,j)) )
                         # (1, AFs)
                         #elseif i in F´ && j in F´ && i == V[1] && j != V[1]
-                        #    set_arc_consumption!(G, arc_id, fuel_res_id,  - f(data,ed2(i,j)) )
+                        #    set_arc_consumption!(G, arc_id, fuel_res_id,  - f(data,ed(i,j)) )
                         # (AFs, 1)
                         #elseif i in F´ && j in F´ && i != V[1] && j == V[1]
-                        #    set_arc_consumption!(G, arc_id, fuel_res_id,  f(data,ed2(i,j)) )
+                        #    set_arc_consumption!(G, arc_id, fuel_res_id,  f(data,ed(i,j)) )
                         # (j, i)
                         else
-                            set_arc_consumption!(G, arc_id, fuel_res_id,  f(data,ed2(i,j)))
+                            set_arc_consumption!(G, arc_id, fuel_res_id,  f(data,ed(i,j)))
                         end
-                        #set_arc_consumption!(G, arc_id, fuel_res_id,  f(data,ed2(i,j)))
+                        #set_arc_consumption!(G, arc_id, fuel_res_id,  f(data,ed(i,j)))
                         
-                        #set_arc_consumption!(G, arc_id, time_res_id, t(data,ed2(i,j)))
-                        set_arc_consumption!(G, arc_id, time_res_id, ((data.G′.V′[i].service_time + data.G′.V′[j].service_time)/2) + t(data,ed2(i,j)))
+                        #set_arc_consumption!(G, arc_id, time_res_id, t(data,ed(i,j)))
+                        set_arc_consumption!(G, arc_id, time_res_id, ((data.G′.V′[i].service_time + data.G′.V′[j].service_time)/2) + t(data,ed(i,j)))
                         
                         #######################################################
 
@@ -258,21 +259,21 @@ function build_model(data::DataGVRP)
                             set_arc_consumption!(G, arc_id, fuel_res_id, β + 1)
                         # (1, AFs) ou (AFs, 1) 
                         elseif i in F´ && j in F´ && i == V[1] || j == V[1]
-                            set_arc_consumption!(G, arc_id, fuel_res_id,  - f(data,ed2(i,j)) )
+                            set_arc_consumption!(G, arc_id, fuel_res_id,  - f(data,ed(i,j)) )
                         # (1, AFs)
                         #elseif i in F´ && j in F´ && i == V[1] && j != V[1]
-                        #    set_arc_consumption!(G, arc_id, fuel_res_id,  - f(data,ed2(i,j)) )
+                        #    set_arc_consumption!(G, arc_id, fuel_res_id,  - f(data,ed(i,j)) )
                         # (AFs, 1)
                         #elseif i in F´ && j in F´ && i != V[1] && j == V[1]
-                        #    set_arc_consumption!(G, arc_id, fuel_res_id,  f(data,ed2(i,j)) )
+                        #    set_arc_consumption!(G, arc_id, fuel_res_id,  f(data,ed(i,j)) )
                         # (j, i)
                         else
-                            set_arc_consumption!(G, arc_id, fuel_res_id,  f(data,ed2(i,j)) )
+                            set_arc_consumption!(G, arc_id, fuel_res_id,  f(data,ed(i,j)) )
                         end
-                        #set_arc_consumption!(G, arc_id, fuel_res_id,  f(data,ed2(i,j)))
+                        #set_arc_consumption!(G, arc_id, fuel_res_id,  f(data,ed(i,j)))
 
-                        #set_arc_consumption!(G, arc_id, time_res_id, t(data,ed2(i,j)))
-                        set_arc_consumption!(G, arc_id, time_res_id, ((data.G′.V′[i].service_time + data.G′.V′[j].service_time)/2) + t(data,ed2(i,j)))
+                        #set_arc_consumption!(G, arc_id, time_res_id, t(data,ed(i,j)))
+                        set_arc_consumption!(G, arc_id, time_res_id, ((data.G′.V′[i].service_time + data.G′.V′[j].service_time)/2) + t(data,ed(i,j)))
                     end
                 end
             end
@@ -296,11 +297,11 @@ function build_model(data::DataGVRP)
         G = build_graph2()
         add_graph!(gvrp, G)
         set_vertex_packing_sets!(gvrp, [[(G, i)] for i in C])
-        set_additional_vertex_elementarity_sets!(gvrp, [(G,[f]) for f in F´])
+        set_additional_vertex_elementarity_sets!(gvrp, [(G,[f]) for f in data.F])
         
-         define_elementarity_sets_distance_matrix!(gvrp, G, [[ed2(i, j) in data.G′.E && i < j && i!=j ? d2(data, ed2(i, j) ) : 0.0 for i in V] for j in V])
+        #define_elementarity_sets_distance_matrix!(gvrp, G, [[ed(i, j) in data.G′.E && i < j && i!=j ? d2(data, ed(i, j) ) : 0.0 for i in V] for j in V])
 
-        #define_elementarity_sets_distance_matrix!(gvrp, G, [[ d2(data,ed2(i, j) ) for i in V] for j in V])
+        define_elementarity_sets_distance_matrix!(gvrp, G, [[ d2(data,ed(i, j) ) for i in V] for j in V])
         
         add_capacity_cut_separator!(gvrp, [ ([(G, i)], 2*data.G′.V′[i].service_time) for i in C], floor(data.T) )
         # quantos 1.0 eu devo acumular até chegar no máximo Q
