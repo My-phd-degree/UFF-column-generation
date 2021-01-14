@@ -301,7 +301,7 @@ function build_model(data::DataGVRP)
         
         #define_elementarity_sets_distance_matrix!(gvrp, G, [[ed(i, j) in data.G′.E && i < j && i!=j ? d2(data, ed(i, j) ) : 0.0 for i in V] for j in V])
 
-        define_elementarity_sets_distance_matrix!(gvrp, G, [[ d2(data,ed(i, j) ) for i in V] for j in V])
+        define_elementarity_sets_distance_matrix!(gvrp, G, [[ d(data,ed(i, j) ) for i in V] for j in V])
         
         add_capacity_cut_separator!(gvrp, [ ([(G, i)], 2*data.G′.V′[i].service_time) for i in C], floor(data.T) )
         # quantos 1.0 eu devo acumular até chegar no máximo Q
@@ -324,13 +324,13 @@ function build_model(data::DataGVRP)
 
         # + Definir packing_sets e elementarity_sets em C demora com e sem pre-processamento
         
-        set_vertex_packing_sets!(gvrp, [[(Graphs[k], i) for k in K] for i in V])
-        #set_vertex_packing_sets!(gvrp, [[(Graphs[k], i) for k in K] for i in C])
+        #set_vertex_packing_sets!(gvrp, [[(Graphs[k], i) for k in K] for i in V])
+        set_vertex_packing_sets!(gvrp, [[(Graphs[k], i) for k in K] for i in C])
         #set_vertex_packing_sets!(gvrp, [[(Graphs[k], i) for i in C] for k in K])
 
         #add_capacity_cut_separator!(gvrp, [ ([(Graphs[k], i) for k in K], 1.0) for i in C], Float64( length(C) )) #β
 
-        #[set_additional_vertex_elementarity_sets!(gvrp, [(Graphs[k],[f]) for k in K]) for f in F´] 
+        [set_additional_vertex_elementarity_sets!(gvrp, [(Graphs[k],[f]) for k in K]) for f in data.F] 
 
         FF = deepcopy(V)
 
