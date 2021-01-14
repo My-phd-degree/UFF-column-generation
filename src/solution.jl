@@ -60,6 +60,11 @@ function getsolution(data::DataGVRP, optimizer::VrpOptimizer, x, objval, app::Di
               print(GREEN_FG, i)
               stack = CrayonStack()
               print(stack, " - ",j," ) ")
+            elseif j in F´ 
+              stack = CrayonStack()
+              print(stack,"( ", i, " - ")
+              print(GREEN_FG, j)
+              print(stack, " ) ")
             else
               print("( $i - $j ) ", i, j)
             end

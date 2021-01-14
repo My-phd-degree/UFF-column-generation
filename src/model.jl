@@ -303,7 +303,7 @@ function build_model(data::DataGVRP)
 
         define_elementarity_sets_distance_matrix!(gvrp, G, [[ d(data,ed(i, j) ) for i in V] for j in V])
         
-        add_capacity_cut_separator!(gvrp, [ ([(G, i)], 2*data.G′.V′[i].service_time) for i in C], floor(data.T) )
+        #add_capacity_cut_separator!(gvrp, [ ([(G, i)], 2*data.G′.V′[i].service_time) for i in C], floor(data.T) )
         # quantos 1.0 eu devo acumular até chegar no máximo Q
         # infos data.G′.V′[i].service_time e data.T
         # transformar minutos 0.5 em minutos inteiro
