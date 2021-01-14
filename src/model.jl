@@ -289,18 +289,20 @@ function build_model(data::DataGVRP)
     end
 
     if i < j && !((i, j) in data.E′)
-
     """
 
-    flag = 2
+    flag = 1
     if flag == 1
         G = build_graph2()
         add_graph!(gvrp, G)
         set_vertex_packing_sets!(gvrp, [[(G, i)] for i in C])
         set_additional_vertex_elementarity_sets!(gvrp, [(G,[f]) for f in F´])
-        define_elementarity_sets_distance_matrix!(gvrp, G, [[ d2(data,ed2(i, j) ) for i in V] for j in V])
         
-        #add_capacity_cut_separator!(gvrp, [ ([(G, i)], data.G′.V′[i].service_time) for i in C], data.T )
+         define_elementarity_sets_distance_matrix!(gvrp, G, [[ed2(i, j) in data.G′.E && i < j && i!=j ? d2(data, ed2(i, j) ) : 0.0 for i in V] for j in V])
+
+        #define_elementarity_sets_distance_matrix!(gvrp, G, [[ d2(data,ed2(i, j) ) for i in V] for j in V])
+        
+        add_capacity_cut_separator!(gvrp, [ ([(G, i)], 2*data.G′.V′[i].service_time) for i in C], floor(data.T) )
         # quantos 1.0 eu devo acumular até chegar no máximo Q
         # infos data.G′.V′[i].service_time e data.T
         # transformar minutos 0.5 em minutos inteiro
@@ -327,7 +329,10 @@ function build_model(data::DataGVRP)
 
         #add_capacity_cut_separator!(gvrp, [ ([(Graphs[k], i) for k in K], 1.0) for i in C], Float64( length(C) )) #β
 
+        #[set_additional_vertex_elementarity_sets!(gvrp, [(Graphs[k],[f]) for k in K]) for f in F´] 
+
         FF = deepcopy(V)
+
         #FF = deepcopy(C)
         #FF = deepcopy(data.F)
         #FF = deepcopy(F´)

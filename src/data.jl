@@ -257,9 +257,9 @@ t(data,e) = (e[1] != e[2] && !((e[1], e[2]) in data.E′) ) ? d(data, e) / data.
 dimension(data::DataGVRP) = length(data.G′.V′) # return number of vertices
 nb_vertices(data::DataGVRP) = length(vertices(data))
 
-d2(data,e) = (e[1] != e[2] ) ? data.G′.cost[e] : 0.0 # cost of the edge e
-f2(data,e) = (e[1] != e[2] ) ? d2(data, e) * data.ρ : 0.0 # fuel of the arc a 
-t2(data,e) = (e[1] != e[2] ) ? d2(data, e) / data.ε : 0.0 
+d2(data,e) = (e[1] < e[2] ) ? data.G′.cost[e] : 0.0 # cost of the edge e
+f2(data,e) = (e[1] < e[2] ) ? d2(data, e) * data.ρ : 0.0 # fuel of the arc a 
+t2(data,e) = (e[1] < e[2] ) ? d2(data, e) / data.ε : 0.0 
 
 # return incident edges of i
 function δ(data::DataGVRP, i::Integer)
