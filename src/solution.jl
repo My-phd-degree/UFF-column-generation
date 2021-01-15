@@ -14,6 +14,7 @@ function getsolution(data::DataGVRP, optimizer::VrpOptimizer, x, objval, app::Di
   for e in E 
     val = get_value(optimizer, x[e])
     if val > 0.5
+      println(e[1], " - ", e[2])
       push!(adj_list[e[1]], e[2])
       push!(adj_list[e[2]], e[1])
       if val > 1.5
@@ -22,14 +23,14 @@ function getsolution(data::DataGVRP, optimizer::VrpOptimizer, x, objval, app::Di
       end
     end
   end
-  print(adj_list)
-  for i in 1:length(adj_list)
-    print(i, ": ", adj_list[i], "\n")
-  end
+  #print(adj_list)
+  #for i in 1:length(adj_list)
+  #  print(i, ": ", adj_list[i], "\n")
+  #end
   # for j in adj_list
   i = 1 #j[1]
   first = i
-  if !visited[i]
+  if false && !visited[i]
     r, prev = [], first
     push!(r, i)
     visited[i] = true
