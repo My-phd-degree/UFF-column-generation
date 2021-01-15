@@ -164,7 +164,8 @@ function build_model(data::DataGVRP)
 
     v_source = v_sink = 0
 #    L = U = length(F) # max and min number of paths is equal to number of AFSs
-    L, U = 0, length(C) # max and min number of paths is equal to number of AFSs
+    L = length(F´)
+    U = length(C) # max and min number of paths is equal to number of AFSs
 
     # node ids of G from 0 to |V|
     G = VrpGraph(gvrp, V′, v_source, v_sink, (L, U))
@@ -223,12 +224,14 @@ function build_model(data::DataGVRP)
 
   set_vertex_packing_sets!(gvrp, [[(G, i)] for i in C])
 
-  define_elementarity_sets_distance_matrix!(gvrp, G, [[ed(i, j) in data.G′.E ? d(data, ed(i, j)) : 0.0 for i in C] for j in C])
+  set_additional_vertex_elementarity_sets!(gvrp, [(G,[f]) for f in data.F])
+  define_elementarity_sets_distance_matrix!(gvrp, G, [[ed(i, j) in data.G′.E ? d(data, ed(i, j)) : 0.0 for i in V] for j in V])
+  add_capacity_cut_separator!(gvrp, [ ([(G, i)], 2.0*data.G′.V′[i].service_time) for i in C], 2.0*floor(data.T) )
 
   set_branching_priority!(gvrp, "x", 1)
-  set_branching_priority!(gvrp, "y", 1)
+  #set_branching_priority!(gvrp, "y", 1)
 
-  function maxflow_mincut_callback()
+function maxflow_mincut_callback()
     M = 100000
     # for all routes
     g = SparseMaxFlowMinCut.ArcFlow[]
@@ -347,6 +350,6 @@ function build_model(data::DataGVRP)
     end
     """
   end
-  add_cut_callback!(gvrp, maxflow_mincut_time_callback, "mincuttime")
+  #add_cut_callback!(gvrp, maxflow_mincut_callback, "mincuttime")
   return (gvrp, x)
 end
