@@ -1,0 +1,3 @@
+include("GVRP/src/run.jl")
+args = ["GVRP/data/Matheus/non-consec/mlsa_flow_10c5f25.000000B-P-n16-k8.vrp", "--instance_type", "Matheus"]
+main(args)

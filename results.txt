@@ -1,0 +1,5 @@
+statistics_cols: instance & :Optimal & cutoff & :bcRecRootDb & :bcTimeRootEval & :bcCountNodeProc & :bcRecBestDb & :bcRecBestInc & :bcTimeMain \\
+statistics: mlsa_flow_10c5f25 & 1 & 1.0e7 & 242.00 & 0.51 & 493 & 286.00 & 286 & 71.49 \\
+statistics: mlsa_flow_12c3f30 & 0 & 1.0e7 & 275.00 & 0.39 & 129 & 309.00 & 333 & 21.19 \\
+statistics: mlsa_flow_13c2f55 & 1 & 1.0e7 & 185.00 & 1.19 & 89 & 209.00 & 209 & 24.08
+

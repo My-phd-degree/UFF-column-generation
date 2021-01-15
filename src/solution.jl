@@ -8,8 +8,8 @@ end
 
 # build Solution from the variables x
 function getsolution(data::DataGVRP, optimizer::VrpOptimizer, x, objval, app::Dict{String,Any})
+  # adj list
   E, dim = edges(data), dimension(data)
-  visited, routes = [false for i in 1:dim], []
   adj_list = [[] for i in 1:dim]
   for e in E 
     val = get_value(optimizer, x[e])
@@ -22,6 +22,17 @@ function getsolution(data::DataGVRP, optimizer::VrpOptimizer, x, objval, app::Di
       end
     end
   end
+  # DFS
+  visited, routes = [false for i in 1:dim], []
+  """
+  function dfs(f::Int64, adj_list::Array{Array{Int64}})
+    visited[f] = true
+  end
+  for f in data.F
+    dfs(f, adj_list)
+  end
+  """
+
   print(adj_list)
   for i in 1:length(adj_list)
     print(i, ": ", adj_list[i], "\n")

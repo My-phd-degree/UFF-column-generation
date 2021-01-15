@@ -157,6 +157,60 @@ function build_model(data::DataGVRP)
   @constraint(gvrp.formulation, no_edge_between_afss[f in F´], sum(x[(f, r)] for r in F´ if (f, r) in E) == 0.0)
   @constraint(gvrp.formulation, y[F[1]] >= 1)
 
+#  routes = [
+#          [0,1,10,3,10,0],
+#          [0,6,5,14,9,13,7,2,0],
+#          [0,2,8,2,0],
+#          [0,10,12,15,4,11,4,0],
+#         ]
+
+#depot - customer - depot 
+#routes = [
+#          [10,3,10],
+#         ]
+#depot - AFS - depot 
+#routes = [
+#          [0,2,0],
+#         ]
+if @isdefined routes
+  ids = Dict{Int,Int}()
+  ids_ = Dict{Int,Int}()
+  for route in routes
+    for id in route
+      if !haskey(ids, id)
+        found = false
+        for i in 1:length(data.G′.V′)
+          v = data.G′.V′[i]
+          if v.id_vertex == id + 1
+            found = true
+            ids[id] = i 
+            ids_[i] = id
+            break
+          end
+        end
+        !found && error("Node of id $id wasn't found")
+      end
+    end
+  end
+  edgesWeights = Dict{Tuple{Int64, Int64},Int64}()
+  for route in routes
+    for i in 2:length(route)
+      e = ed(ids[route[i]], ids[route[i - 1]])
+      if haskey(edgesWeights, e)
+        edgesWeights[e] = edgesWeights[e] + 1
+      else
+        edgesWeights[e] = 1
+      end
+    end 
+  end
+  for e in keys(edgesWeights)
+    println(f(data, e))
+    println(data.G′.V′[e[1]], " ", data.G′.V′[e[2]])
+    println("Edge $e; Edge weight $(edgesWeights[e]); EdgeId $(ed(ids_[e[1]], ids_[e[2]]))")
+    @constraint(gvrp.formulation, x[e] == edgesWeights[e])
+  end
+end
+
   # Build the model directed graph G=(V,A)
   function build_graph()
 
@@ -260,12 +314,11 @@ function build_model(data::DataGVRP)
       println(">>>>> Add min cuts : ", length(added_cuts), " cut(s) added") 
     end
   end
-  add_cut_callback!(gvrp, maxflow_mincut_callback, "mincut")
+#  add_cut_callback!(gvrp, maxflow_mincut_callback, "mincut")
 
   function maxflow_mincut_time_callback()
     # solve model
     M = Model(solver = CplexSolver(
-                                  
                                    CPX_PARAM_MIPDISPLAY=0,
                                    CPX_PARAM_SCRIND=0
                                   ))
