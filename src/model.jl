@@ -78,8 +78,8 @@ function cplex(data::DataGVRP)
       [y´[i] > 0.5 ? push!(setIn, i) : push!(setOut, i) for i in 1:n]
 
       #       println(y´)
-      #      println(w´)
-      #      println(z´)
+      #       println(w´)
+      #       println(z´)
       #       println("S: ", setIn)
       #       println("V\\S: ", setOut)
       #       println([x[e] for e in E if w´[e] > 0.5])
