@@ -1,7 +1,14 @@
 #import Pkg; 
+#Pkg.add("Distances")
 #Pkg.add("Crayons")
+#Pkg.add("Plots")
+#Pkg.add("GraphRecipes")
+#Pkg.add("LightGraphs")
+
 using Crayons
 using Crayons.Box
+using GraphRecipes, Plots
+using LightGraphs
 
 mutable struct Solution
   cost::Union{Int,Float64}
@@ -21,33 +28,48 @@ function getsolution(data::DataGVRP, optimizer::VrpOptimizer, x, objval, app::Di
   adj_list = [[] for i in 1:dim]
   
 
-  println("MATRIX\n\n")
+  println("\nMatrix Costs:\n")
   
   print("\t")
   for j in V
-    print(j, "\t")
+    stack = CrayonStack()
+    if j in F´
+      print(GREEN_FG, j, "\t")
+    else
+      print(stack, j, "\t")
+    end
   end
   println("\n")
   for i in V
-    print(i, "\t")
+    stack = CrayonStack()
+    if i in F´
+      print(GREEN_FG, i, "\t")
+    else
+      print(stack, i, "\t")
+    end
     for j in V
-      if i != j && !((i, j) in data.E′) 
-        print(data.G′.cost[ed(i, j)], "\t")
+      if i != j && !((i, j) in data.E´) 
+        stack = CrayonStack()
+        print(stack, data.G´.cost[ed(i, j)], "\t")
       else
-        print("*.*", "\t")
+        print(RED_FG, "***", "\t")
+        stack = CrayonStack()
       end
     end
     println("")
   end
+  println("")
 
   for k in K
-    print("Route $k S: ", k)
+    stack = CrayonStack()
+    print(stack, "Route $k S: ", k)
     visited = [false for i in V]
     for i in V
       for j in V
         #if visited[j] continue end
-        if i != j && !((i, j) in data.E′)
+        if i != j && !((i, j) in data.E´) #&& !visited[j]
           val = get_value(optimizer, x[i, j, k])
+          #####################################
           if val > 0.5
             push!(adj_list[i], j)
             push!(adj_list[j], i)
@@ -68,13 +90,11 @@ function getsolution(data::DataGVRP, optimizer::VrpOptimizer, x, objval, app::Di
             else
               print("( $i - $j ) ", i, j)
             end
-             
-            #visited[j] = true
             #i = j
-            #j = 0
-            #visited[i] = true
+            #visited[j] = true
             #continue
           end
+          #####################################
         end
       end
     end
@@ -86,6 +106,23 @@ function getsolution(data::DataGVRP, optimizer::VrpOptimizer, x, objval, app::Di
 end
 
 function print_routes(solution)
+  #x = 1:10; y = rand(10); # These are the plotting data
+  #plot(x, y)
+  #savefig("myplot.png")
+  """
+  n = 8
+  g = wheel_digraph(n)
+  edgelabel_dict = Dict()
+  edgelabel_mat = Array{String}(undef, n, n)
+  for i in 1:n
+      for j in 1:n
+          edgelabel_mat[i, j] = edgelabel_dict[(i, j)] = string("edge ", i, " to ", j)
+      end
+  end
+  edgelabel_vec = edgelabel_mat[:]
+
+  graphplot(g, names=1:n, edgelabel=edgelabel_dict, curves=false, nodeshape=:rect)  # Or edgelabel=edgelabel_mat, or edgelabel=edgelabel_vec.
+  """
 end
 
 # checks the feasiblity of a solution

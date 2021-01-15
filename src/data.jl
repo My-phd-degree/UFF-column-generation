@@ -10,17 +10,17 @@ end
 
 # Directed graph
 mutable struct InputGraph
-    V′::Array{Vertex} # set of vertices
+    V´::Array{Vertex} # set of vertices
     E::Array{Tuple{Int64,Int64}} # set of edges
     cost::Dict{Tuple{Int64,Int64},Float64} # cost for each edge
 end
 
 mutable struct DataGVRP
-    G′::InputGraph
+    G´::InputGraph
     F::Array{Int64} # AFSs nodes
     C::Array{Int64} # Customers nodes
     M::Array{Int64} # Vehicles IDs
-    E′::Array{Tuple{Int64,Int64}}
+    E´::Array{Tuple{Int64,Int64}}
     FM::Array{Tuple{Int64,Int64}}
     β::Float64 # Total distance between two consecutive black vertices
     T::Float64 # Route time limit
@@ -29,14 +29,14 @@ mutable struct DataGVRP
     m::Int64 # Qtd of vehicles
 end
 
-vertices(data::DataGVRP) = [i.id_vertex for i in data.G′.V′[1:end]] # return set of vertices
+vertices(data::DataGVRP) = [i.id_vertex for i in data.G´.V´[1:end]] # return set of vertices
 
 function distance(data::DataGVRP, e::Tuple{Int64,Int64})
-  if haskey(data.G′.cost, e) # use already calculated value
-    return data.G′.cost[e]
+  if haskey(data.G´.cost, e) # use already calculated value
+    return data.G´.cost[e]
   end
   u, v = e 
-  vertices = data.G′.V′
+  vertices = data.G´.V´
   flag = 1
   # array <vertices> is indexed from 1 (depot is vertices[1], customer 1 is vertices[2], and so on)
   return (flag == 1) ? GEO_dist(vertices[u], vertices[v]) : EUC_dist(vertices[u], vertices[v])  
@@ -65,8 +65,8 @@ end
 contains(p, s) = findnext(s, p, 1) != nothing
 
 function readEMHInstance(app::Dict{String,Any})
-    G′ = InputGraph([], [], Dict())
-    data = DataGVRP(G′, [], [], [], [], [], 0.0, 0.0, 0.0, 0.0, 0)
+    G´ = InputGraph([], [], Dict())
+    data = DataGVRP(G´, [], [], [], [], [], 0.0, 0.0, 0.0, 0.0, 0)
 
     open(app["instance"]) do f
       # Ignore header
@@ -82,7 +82,7 @@ function readEMHInstance(app::Dict{String,Any})
         v = Vertex(i, 0.0, 0.0, 0.0)
         v.pos_x = parse(Float64, aux[3])
         v.pos_y = parse(Float64, aux[4])
-        push!(G′.V′, v) 
+        push!(G´.V´, v) 
         
         if aux[2] == "f" || aux[2] == "d"
           # Get AFS
@@ -121,34 +121,34 @@ function readEMHInstance(app::Dict{String,Any})
         #  push!(data.FM[k], length(F)-1 )
         #end
       end
-
     end
 
     #read preprocessings
-    data.E′ = []
+    data.E´ = []
     if haskey(app, "preprocessings") && app["preprocessings"] != nothing
       open(app["preprocessings"]) do f
         while !eof(f)
           # read edge
           line = readline(f)
           edge = split(line, [' ', ',']; limit=0, keepempty=false)
-          push!(data.E′, (parse(Int64, edge[1]) + 1, parse(Int64, edge[2]) + 1))
+          push!(data.E´, (parse(Int64, edge[1]) , parse(Int64, edge[2]) ))
         end
       end
     end
 
     for i in vertices(data)
       for j in vertices(data) # add arcs between vertices
-        #if haskey(app, "preprocessings") && app["preprocessings"] != nothing
-        #  if i < j && !((i, j) in data.E′)
-        #    println("*****************")
-        #    push!(G′.E, e) # add edge e
-        #    data.G′.cost[e] = distance(data, e)
-        #  end
-        if i < j
-            e = (i, j)
-            push!(G′.E, e) # add edge e
-            data.G′.cost[e] = distance(data, e)
+        e = (i, j)
+        if haskey(app, "preprocessings") && app["preprocessings"] != nothing
+          push!(G´.E, e) # add edge e
+          if i < j && !((i, j) in data.E´)
+            data.G´.cost[e] = distance(data, e)
+          else
+            data.G´.cost[e] = 999999999.9999
+          end
+        elseif i < j
+            push!(G´.E, e) # add edge e
+            data.G´.cost[e] = distance(data, e)
         end
       end
     end
@@ -156,9 +156,10 @@ function readEMHInstance(app::Dict{String,Any})
     return data
 end
 
+# fix bugs
 function readMatheusInstance(app::Dict{String,Any})
-    G′ = InputGraph([], [], Dict())
-    data = DataGVRP(G′, [], [], [], [], [], 0.0, 0.0, 0.0, 0.0, 0)
+    G´ = InputGraph([], [], Dict())
+    data = DataGVRP(G´, [], [], [], [], [], 0.0, 0.0, 0.0, 0.0, 0)
     sepChar = ';'
     open(app["instance"]) do f
       # vehicle data
@@ -185,7 +186,7 @@ function readMatheusInstance(app::Dict{String,Any})
       v = Vertex(parse(Int64, aux[1]) + 1, parse(Float64, aux[2]), parse(Float64, aux[3]), parse(Float64, aux[4]))
       i = 1
       push!(data.F, i)
-      push!(G′.V′, v) 
+      push!(G´.V´, v) 
       i = i + 1
       # get customers
       # ignore headers
@@ -199,7 +200,7 @@ function readMatheusInstance(app::Dict{String,Any})
         end
         v = Vertex(parse(Int64, aux[1]) + 1, parse(Float64, aux[2]), parse(Float64, aux[3]), parse(Float64, aux[4]))
         push!(data.C, i)
-        push!(G′.V′, v) 
+        push!(G´.V´, v) 
         i = i + 1
       end
       # get AFSs
@@ -213,7 +214,7 @@ function readMatheusInstance(app::Dict{String,Any})
         end
         v = Vertex(parse(Int64, aux[1]) + 1, parse(Float64, aux[2]), parse(Float64, aux[3]), parse(Float64, aux[4]))
         push!(data.F, i)
-        push!(G′.V′, v) 
+        push!(G´.V´, v) 
         i = i + 1
       end
       data.m = length(data.C)
@@ -222,27 +223,27 @@ function readMatheusInstance(app::Dict{String,Any})
     end
 
     #read preprocessings
-    data.E′ = []
+    data.E´ = []
     if haskey(app, "preprocessings") && app["preprocessings"] != nothing
       open(app["preprocessings"]) do f
         while !eof(f)
           # read edge
           line = readline(f)
           edge = split(line, [' ', ',']; limit=0, keepempty=false)
-          push!(data.E′, (parse(Int64, edge[1]) + 1, parse(Int64, edge[2]) + 1))
+          push!(data.E´, (parse(Int64, edge[1]) + 1, parse(Int64, edge[2]) + 1))
         end
       end
     end
 
     for i in vertices(data)
       for j in vertices(data) # add arcs between vertices
-          e = (i, j)
-          a, b = data.G′.V′[i], data.G′.V′[j]
-          if i < j && !((a.id_vertex, b.id_vertex) in data.E′)
-            vertices = data.G′.V′
-            push!(G′.E, e) # add edge e
-            data.G′.cost[e] = distance(data,e)
-            #data.G′.cost[e] = EUC_dist(vertices[e[1]], vertices[e[2]])
+        e = (i, j)
+        a, b = data.G´.V´[i], data.G´.V´[j]
+        if i < j && !((a.id_vertex, b.id_vertex) in data.E´)
+          vertices = data.G´.V´
+          push!(G´.E, e) # add edge e
+          data.G´.cost[e] = distance(data,e)
+          #data.G´.cost[e] = EUC_dist(vertices[e[1]], vertices[e[2]])
         end
       end
     end
@@ -250,18 +251,18 @@ function readMatheusInstance(app::Dict{String,Any})
     return data
 end
 
-#&& !((e[1], e[2]) in data.E′) 
-edges(data::DataGVRP) = data.G′.E # return set of arcs
-d(data,e) = (e[1] != e[2] ) ? data.G′.cost[e] : 0.0 # cost of the edge e
+#&& !((e[1], e[2]) in data.E´) 
+edges(data::DataGVRP) = data.G´.E # return set of arcs
+d(data,e) = (e[1] != e[2] ) ? data.G´.cost[e] : 0.0 # cost of the edge e
 f(data,e) = (e[1] != e[2] ) ? d(data, e) * data.ρ : 0.0 # fuel of the arc a 
 t(data,e) = (e[1] != e[2] ) ? d(data, e) / data.ε : 0.0 # time of the arc a 
-dimension(data::DataGVRP) = length(data.G′.V′) # return number of vertices
+dimension(data::DataGVRP) = length(data.G´.V´) # return number of vertices
 nb_vertices(data::DataGVRP) = length(vertices(data))
 
 # return incident edges of i
 function δ(data::DataGVRP, i::Integer)
     incident_edges = Vector{Tuple}()
     for j in 1:i - 1 push!(incident_edges, (j, i)) end
-    for j in i + 1:(length(data.G′.V′)) push!(incident_edges, (i, j)) end
+    for j in i + 1:(length(data.G´.V´)) push!(incident_edges, (i, j)) end
     return incident_edges
 end
