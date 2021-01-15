@@ -1,5 +1,7 @@
 using CPLEX
 
+## debug by marcos
+
 function cplex(data::DataGVRP)
   E = edges(data) # set of edges of the input graph G′
   n = nb_vertices(data)
