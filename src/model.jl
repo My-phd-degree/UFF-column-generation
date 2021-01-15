@@ -130,24 +130,6 @@ function build_model(data::DataGVRP)
   popfirst!(F´)
 
   ed(i, j) = i < j ? (i, j) : (j, i)
-
-# println("Customers ")
-# for i in data.C
-#   println(i, " ", data.G′.V′[i], ", δ($i) = $(δ(data, i))")
-# end
-# println("AFSs ")
-# for i in data.F
-#   println(i, " ", data.G′.V′[i], ", δ($i) = $(δ(data, i))")
-# end
-# println("F´: ", F´)
-# println("β: $β")
-# println("T: $T")
-# println("ρ: $(data.ρ)")
-# println("ε: $(data.ε)")
-# println("E: ", length(E))
-# for (i, j) in E
-#   println("d(($i, $j)) = ", d(data, (i, j)), " f(($i, $j)) = ", f(data, (i, j)), " t(($i, $j)) = ", t(data, (i, j)))
-# end
   
   # Formulation
   gvrp = VrpModel()
@@ -229,9 +211,9 @@ function build_model(data::DataGVRP)
   add_capacity_cut_separator!(gvrp, [ ([(G, i)], 2.0*data.G′.V′[i].service_time) for i in C], 2.0*floor(data.T) )
 
   set_branching_priority!(gvrp, "x", 1)
-  #set_branching_priority!(gvrp, "y", 1)
+  set_branching_priority!(gvrp, "y", 1)
 
-function maxflow_mincut_callback()
+  function maxflow_mincut_callback()
     M = 100000
     # for all routes
     g = SparseMaxFlowMinCut.ArcFlow[]
@@ -301,8 +283,8 @@ function maxflow_mincut_callback()
 #     println(y´)
 #     println(w´)
 #     println(z´)
-     println("S: ", setIn)
-     println("V\\S: ", setOut)
+      println("S: ", setIn)
+      println("V\\S: ", setOut)
 #     println([x[e] for e in E if w´[e] > 0.5])
 #     println()
 #     println([x[e] for e in E if z´[e] > 0.5])
