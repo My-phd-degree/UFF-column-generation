@@ -5,10 +5,10 @@
 #Pkg.add("GraphRecipes")
 #Pkg.add("LightGraphs")
 
-using Crayons
-using Crayons.Box
-using GraphRecipes, Plots
-using LightGraphs
+using Crayons                   # https://github.com/KristofferC/Crayons.jl
+using Crayons.Box               # ...
+using GraphRecipes, Plots       # https://docs.juliaplots.org/latest/tutorial/#tutorial
+using LightGraphs               # https://docs.juliaplots.org/latest/graphrecipes/examples/
 
 mutable struct Solution
   cost::Union{Int,Float64}
@@ -22,7 +22,7 @@ function getsolution(data::DataGVRP, optimizer::VrpOptimizer, x, objval, app::Di
   V = [i for i in 1:n]
   T = data.T
   K = data.M
-  F´ = deepcopy(data.F) 
+  F´ = deepcopy(data.F)
   popfirst!(F´)
 
   adj_list = [[] for i in 1:dim]

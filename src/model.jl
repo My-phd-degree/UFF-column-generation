@@ -1,10 +1,11 @@
 function build_model(data::DataGVRP)
     
+    # os primeiros F vertices são vertices de abastecimento 
+
     E = edges(data) # set of edges of the input graph G´
     n = nb_vertices(data)
     V = [i for i in 1:n] # set of vertices of the input graph G´
     V´ = [i for i in 0:n] # V ⋃ {0}, where 0 is a dummy vertex
-    VV = [5,6,7,8,9]
 
     β = data.β
     C = data.C # Set of customers vertices
@@ -77,7 +78,7 @@ function build_model(data::DataGVRP)
         #U = length(C)
 
         L = U = length(F´)
-
+        
         # node ids of G from 0 to |V|
         G = VrpGraph(gvrp, V´, v_source, v_sink, (L, U))
         # resourves, R = R_M = {1,2} = {cap_res_id, fuel_res_id}}
@@ -189,7 +190,7 @@ function build_model(data::DataGVRP)
 
         # node ids of G from 0 to |V|
         G = VrpGraph(gvrp, V´, v_source, v_sink, (L, U))
-        # resourves, R = R_M = {1,2} = {cap_res_id, fuel_res_id}}
+        # resources, R = R_M = {1,2} = {cap_res_id, fuel_res_id}}
         time_res_id = add_resource!(G, main=true)
         fuel_res_id = add_resource!(G, main=true)
 
@@ -298,12 +299,15 @@ function build_model(data::DataGVRP)
     if flag == 1
         G = build_graph()
         add_graph!(gvrp, G)
+
         set_vertex_packing_sets!(gvrp, [[(G, i)] for i in C])
         set_additional_vertex_elementarity_sets!(gvrp, [(G,[f]) for f in data.F])
-
         define_elementarity_sets_distance_matrix!(gvrp, G, [[ d(data,ed(i, j) ) for i in V] for j in V])
-        
-        add_capacity_cut_separator!(gvrp, [ ([(G, i)], 2.0*data.G´.V´[i].service_time) for i in C], 2.0*floor(data.T) )
+
+        #add_capacity_cut_separator!(gvrp, [ ([(G, i)], 2.0*floor(data.G´.V´[i].service_time) ) for i in C], 2.0*floor(data.T) )
+
+        # 5.64 ,  com capacity_cut
+        # 5.81 , 3.75 , 3.83 , 4.39  , sem capacity_cut
         # quantos 1.0 eu devo acumular até chegar no máximo Q
         # infos data.G´.V´[i].service_time e data.T
         # transformar minutos 0.5 em minutos inteiro
@@ -325,6 +329,8 @@ function build_model(data::DataGVRP)
 
         #add_capacity_cut_separator!(gvrp, [ ([(Graphs[k], i) for k in K], 1.0) for i in C], Float64( length(C) )) #β
 
+        # com 2.84
+        # sem cap 3.04 
         [set_additional_vertex_elementarity_sets!(gvrp, [(Graphs[k],[f]) for k in K]) for f in F´] 
 
         [define_elementarity_sets_distance_matrix!(gvrp, Graphs[k], [[d(data,ed(i, j)) for i in V] for j in V]) for k in K]
