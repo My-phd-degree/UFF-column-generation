@@ -53,6 +53,7 @@ function GEO_dist(u::Vertex, v::Vertex)
     x_sq = (v.pos_x - u.pos_x)^2
     y_sq = (v.pos_y - u.pos_y)^2
     return floor(sqrt(x_sq + y_sq) + 0.5)
+    #return sqrt(x_sq + y_sq) + 0.5
 end
 
 # EUC_2D distance
@@ -258,6 +259,21 @@ f(data,e) = (e[1] != e[2] ) ? d(data, e) * data.ρ : 0.0 # fuel of the arc a
 t(data,e) = (e[1] != e[2] ) ? d(data, e) / data.ε : 0.0 # time of the arc a 
 dimension(data::DataGVRP) = length(data.G´.V´) # return number of vertices
 nb_vertices(data::DataGVRP) = length(vertices(data))
+
+function lowerBoundNbVehicles(data::DataGVRP) 
+   sum_demand = 0
+   println("lowerBoundNbVehicles")
+   alpha = nb_vertices(data)
+   for i in data.G´.V´
+      println(i)
+   end
+
+   for i in vertices(data)
+      println(i)
+      sum_demand += ceil(alpha*data.G´.V´[i].service_time)
+   end
+   return Int( ceil( sum_demand / (ceil(data.T) ) ) )
+end
 
 # return incident edges of i
 function δ(data::DataGVRP, i::Integer)

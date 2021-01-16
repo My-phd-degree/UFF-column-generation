@@ -40,10 +40,9 @@ function build_model(data::DataGVRP)
 
     # Formulation
     gvrp = VrpModel()
-    @variables(gvrp.formulation, begin
-                 0 <= x[i in V, j in V, k in M] <= 1, Int
-                 0 <= e[i in C] <= data.β
-               end)
+
+    @variable(gvrp.formulation, 0 <= x[i in V, j in V, k in M] <= 1, Int)
+    @variable(gvrp.formulation, 0 <= e[i in C] <= data.β)
 
     @objective(gvrp.formulation, Min, sum( data.G´.cost[ed(i, j)] * x[i,j,k] for i in V, j in V, k in M if i != j && !((i, j) in data.E´)  ) )
 
@@ -77,8 +76,11 @@ function build_model(data::DataGVRP)
         #L = 0 
         #U = length(C)
 
-        L = U = length(F´)
+        #L = U = length(F´)
         
+        L = lowerBoundNbVehicles(data)
+        U = length(V)
+        println(L, " " ,U)
         # node ids of G from 0 to |V|
         G = VrpGraph(gvrp, V´, v_source, v_sink, (L, U))
         # resourves, R = R_M = {1,2} = {cap_res_id, fuel_res_id}}
@@ -95,6 +97,7 @@ function build_model(data::DataGVRP)
             set_resource_bounds!(G, i, time_res_id, l_i_time, u_i_time)
         end
 
+        #"""
         # Build set of arcs A from E´ (two arcs for each edge (i,j))
         for f in F´ # setting the arcs between source, sink, and black vertices
             # source -> i(AFS)
@@ -106,7 +109,7 @@ function build_model(data::DataGVRP)
             set_arc_consumption!(G, arc_id, time_res_id, data.G´.V´[f].service_time/2.0)
             set_arc_consumption!(G, arc_id, fuel_res_id, 0.0)
         end
-
+        #"""
         for k in K
             for i in V
                 for j in V
