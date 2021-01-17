@@ -66,7 +66,7 @@ function run_gvrp(app::Dict{String,Any})
 
     solution_found = false
     if !app["nosolve"]
-        (model, x, e, LB_E) = build_model(data)
+        (model, x, e) = build_model(data)
 
         #println(model.formulation)
         # enum_paths, complete_form = get_complete_formulation(model, app["cfg"])
@@ -81,7 +81,7 @@ function run_gvrp(app::Dict{String,Any})
         
         (status, solution_found) = optimize!(optimizer)
         if solution_found
-            sol = getsolution(data, optimizer, x, e, LB_E, get_objective_value(optimizer), app)
+            sol = getsolution(data, optimizer, x, e, get_objective_value(optimizer), app)
         end
     end
 

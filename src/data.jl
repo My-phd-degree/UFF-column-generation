@@ -29,6 +29,7 @@ mutable struct DataGVRP
     m::Int64 # Qtd of vehicles
     max_ed::Float64
     min_ed::Float64
+    LB_E::Array{Float64}
 end
 
 vertices(data::DataGVRP) = [i.id_vertex for i in data.G´.V´[1:end]] # return set of vertices
@@ -69,7 +70,7 @@ contains(p, s) = findnext(s, p, 1) != nothing
 
 function readEMHInstance(app::Dict{String,Any})
     G´ = InputGraph([], [], Dict())
-    data = DataGVRP(G´, [], [], [], [], [], 0.0, 0.0, 0.0, 0.0, 0, 0.0, 0.0)
+    data = DataGVRP(G´, [], [], [], [], [], 0.0, 0.0, 0.0, 0.0, 0, 0.0, 0.0,[])
 
     open(app["instance"]) do f
       # Ignore header
@@ -162,14 +163,14 @@ function readEMHInstance(app::Dict{String,Any})
         end
       end
     end
-
+    min_LB_E_j(data)
     return data
 end
 
 # fix bugs
 function readMatheusInstance(app::Dict{String,Any})
     G´ = InputGraph([], [], Dict())
-    data = DataGVRP(G´, [], [], [], [], [], 0.0, 0.0, 0.0, 0.0, 0, 0.0, 0.0)
+    data = DataGVRP(G´, [], [], [], [], [], 0.0, 0.0, 0.0, 0.0, 0, 0.0, 0.0, [])
     sepChar = ';'
     open(app["instance"]) do f
       # vehicle data
@@ -269,6 +270,40 @@ t(data,e) = (e[1] != e[2] && !((e[1], e[2]) in data.E´) ) ? d(data, e) / data.�
 dimension(data::DataGVRP) = length(data.G´.V´) # return number of vertices
 nb_vertices(data::DataGVRP) = length(vertices(data))
 
+function min_LB_E_j(data::DataGVRP)
+  #LB_E = [i for i in C[i]:length(data.C)]#[0.0 for j in data.C]
+  #LB_E = deepcopy(data.C)
+  #[LB_E = 0.0 for j = 0 in length(data.C)]
+  #LB_E = [j for j in 0:length(data.C)]
+  #for j in 0:1:length(data.C)
+  #for j in length(data.C)
+  #  push!(data.LB_E, 0.0)
+  #end
+  #LB_E = [0.0 , 0.0, 0.0, 0.0]
+  #data.LB_E = fill( 0.0, length(data.C) )
+  #data.LB_E[0] = 1.0
+  #setindex!(data.LB_E, 0.0, 0)
+  #println("LB_E: ", data.LB_E[0])
+  #set_additional_vertex_elementarity_sets!(gvrp, [(G,[f]) for f in data.F])
+  for j in data.C
+    e_jf = Array{Int64}
+    e_jr = Array{Int64}
+    e_jf = []
+    e_jr = []
+    push!(e_jf,0) 
+    push!(e_jf,0)
+    push!(e_jr,0) 
+    push!(e_jr,0)
+    for _f in data.C
+      for _r in data.C
+        if f( data, ed( _f, _r ) ) > 0
+        end
+        #LB_E[i] = f(data, ed(i, j))
+      end
+    end
+    #push!( data.LB_E, min( f( data, ed( e_jf[0], e_jf[1] ) ) , f( data, ed( e_jr[0], e_jr[1] ) ) ) )
+  end
+end
 function lowerBoundNbVehicles(data::DataGVRP) 
    sum_demand = 0
    alpha = nb_vertices(data)
