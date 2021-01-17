@@ -270,6 +270,40 @@ t(data,e) = (e[1] != e[2] && !((e[1], e[2]) in data.E´) ) ? d(data, e) / data.�
 dimension(data::DataGVRP) = length(data.G´.V´) # return number of vertices
 nb_vertices(data::DataGVRP) = length(vertices(data))
 
+# min path cost i to j (satisfying problem restrictions)
+function cost_minPath(data::DataGVRP, i::Integer, j::Integer)
+  n = nb_vertices(data)
+  V = [i for i in 1:n]
+  E = edges(data)
+  s = V[1]
+  visited = [false for i in V]
+  
+  """
+  for c in V
+    if visited[c]
+      continue
+    end
+    visited[c] = true
+    comp = [c]
+    q = [c]
+    #println(q)
+    while length(q) > 0
+      i = pop!(q)
+      for j in V 
+        #if i != j && get_value(gvrp.optimizer, x[i, j, k]) > 0.0001 || 
+        #    get_value(gvrp.optimizer, x[j, i, k]) > 0.0001 &&     !visited[j]
+        if i != j && !((i, j) in data.E´) && ( get_value(gvrp.optimizer, x[i, j, k]) > 0.0001 || get_value(gvrp.optimizer, x[j, i, k]) > 0.0001 ) && !visited[j]
+          visited[j] = true
+          push!(q, j)
+          push!(comp, j)
+        end
+      end
+    end
+  end
+  """
+  return 0.0
+end
+
 function min_LB_E_j(data::DataGVRP)
   C´ = Array{Int64}
   C´ = []
@@ -287,7 +321,7 @@ function min_LB_E_j(data::DataGVRP)
   push!(e_jr,0)
 
   # se vc se refere ao  t_{f}^{'} da tese, eles são calculados pelo 
-  # caminho minimo de f ao deposito no grapfo induzido de AFSs com arestas de peso <= beta
+  # caminho minimo de f ao deposito no grafo induzido de AFSs com arestas de peso <= beta
   
   # bem se ele tem limite de tempo <= T e todas as arestas tem combustivel <= beta, 
   # então ele é viaável
@@ -295,10 +329,16 @@ function min_LB_E_j(data::DataGVRP)
     for _f in data.F
       for _r in data.F
         t_f = t_r = 0
-        for i in 1:1:nb_vertices(data)
-          t_f += t( data, ed( i, _f ) )
-          t_r += t( data, ed( i, _r ) )
-        end
+        
+        # custo do caminho mínimo entre _f e 1 satisfazendo em tempo e combustível
+        #for i in 1:1:nb_vertices(data)
+        #  t_f += t( data, ed( i, _f ) )
+        #  t_r += t( data, ed( i, _r ) )
+        #end
+
+        t_f = cost_minPath(data, _f, 1)#data.G´.V´[1]
+        t_r = cost_minPath(data, _r, 1)#data.G´.V´[1]
+
         if t_f + t( data, ed( _f, j ) ) + t( data, ed( j, _r ) ) + t_r <= data.T && f( data, ed( _f, j ) ) + f( data, ed( j, _r ) ) <= data.β
           e_jf[1], e_jf[2] = j, _f
           e_jr[1], e_jr[2] = j, _r
@@ -306,7 +346,8 @@ function min_LB_E_j(data::DataGVRP)
         #LB_E[i] = f(data, ed(i, j))
       end
     end
-    push!( data.LB_E, min( f( data, ed( e_jf[1], e_jf[2] ) ) , f( data, ed( e_jr[1], e_jr[2] ) ) ) )
+    push!( data.LB_E, 0.0 )
+    #push!( data.LB_E, min( f( data, ed( e_jf[1], e_jf[2] ) ) , f( data, ed( e_jr[1], e_jr[2] ) ) ) )
   end
 end
 
