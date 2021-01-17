@@ -27,6 +27,8 @@ mutable struct DataGVRP
     ρ::Float64 # Vehicle fuel comsumption rate
     ε::Float64 # Vehicle average speed
     m::Int64 # Qtd of vehicles
+    max_ed::Float64
+    min_ed::Float64
 end
 
 vertices(data::DataGVRP) = [i.id_vertex for i in data.G´.V´[1:end]] # return set of vertices
@@ -67,13 +69,15 @@ contains(p, s) = findnext(s, p, 1) != nothing
 
 function readEMHInstance(app::Dict{String,Any})
     G´ = InputGraph([], [], Dict())
-    data = DataGVRP(G´, [], [], [], [], [], 0.0, 0.0, 0.0, 0.0, 0)
+    data = DataGVRP(G´, [], [], [], [], [], 0.0, 0.0, 0.0, 0.0, 0, 0.0, 0.0)
 
     open(app["instance"]) do f
       # Ignore header
       readline(f)
       # Read vertices
       i = 1
+      data.max_ed = 0.0
+      data.min_ed = 999999999.9999
       while !eof(f)
         line = readline(f)
         aux = split(line, ['\t']; limit=0, keepempty=false)
@@ -144,12 +148,17 @@ function readEMHInstance(app::Dict{String,Any})
           push!(G´.E, e) # add edge e
           if i < j && !((i, j) in data.E´)
             data.G´.cost[e] = distance(data, e)
+            data.max_ed = ( data.max_ed < f(data, ed(i, j)) ) ? f(data, ed(i, j)) : 0.0
+            data.min_ed = ( data.min_ed > f(data, ed(i, j)) ) ? f(data, ed(i, j)) : 999999999.9999
           else
             data.G´.cost[e] = 999999999.9999
           end
         elseif i < j
             push!(G´.E, e) # add edge e
             data.G´.cost[e] = distance(data, e)
+            #println( data.max_ed, " <= " , f(data, ed(i, j)) , " ", (data.max_ed <= f(data, ed(i, j)) ) ? true : false )
+            data.max_ed = ( data.max_ed < f(data, ed(i, j)) ) ? f(data, ed(i, j)) : data.max_ed
+            data.min_ed = ( data.min_ed > f(data, ed(i, j)) ) ? f(data, ed(i, j)) : 999999999.9999
         end
       end
     end
@@ -160,7 +169,7 @@ end
 # fix bugs
 function readMatheusInstance(app::Dict{String,Any})
     G´ = InputGraph([], [], Dict())
-    data = DataGVRP(G´, [], [], [], [], [], 0.0, 0.0, 0.0, 0.0, 0)
+    data = DataGVRP(G´, [], [], [], [], [], 0.0, 0.0, 0.0, 0.0, 0, 0.0, 0.0)
     sepChar = ';'
     open(app["instance"]) do f
       # vehicle data
@@ -254,16 +263,16 @@ end
 
 #&& !((e[1], e[2]) in data.E´) 
 edges(data::DataGVRP) = data.G´.E # return set of arcs
-d(data,e) = (e[1] != e[2] ) ? data.G´.cost[e] : 0.0 # cost of the edge e
-f(data,e) = (e[1] != e[2] ) ? d(data, e) * data.ρ : 0.0 # fuel of the arc a 
-t(data,e) = (e[1] != e[2] ) ? d(data, e) / data.ε : 0.0 # time of the arc a 
+d(data,e) = (e[1] != e[2] && !((e[1], e[2]) in data.E´) ) ? data.G´.cost[e] : 999999999.9999 # cost of the edge e
+f(data,e) = (e[1] != e[2] && !((e[1], e[2]) in data.E´) ) ? d(data, e) * data.ρ : 999999999.9999 # fuel of the arc a 
+t(data,e) = (e[1] != e[2] && !((e[1], e[2]) in data.E´) ) ? d(data, e) / data.ε : 999999999.9999 # time of the arc a 
 dimension(data::DataGVRP) = length(data.G´.V´) # return number of vertices
 nb_vertices(data::DataGVRP) = length(vertices(data))
 
 function lowerBoundNbVehicles(data::DataGVRP) 
    sum_demand = 0
-   println("lowerBoundNbVehicles")
    alpha = nb_vertices(data)
+   println("lowerBoundNbVehicles")
    for i in data.G´.V´
       println(i)
    end

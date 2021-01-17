@@ -16,12 +16,15 @@ mutable struct Solution
 end
 
 # build Solution from the variables x
-function getsolution(data::DataGVRP, optimizer::VrpOptimizer, x, objval, app::Dict{String,Any})
+function getsolution(data::DataGVRP, optimizer::VrpOptimizer, x, e, LB_E, objval, app::Dict{String,Any})
   E, dim = edges(data), dimension(data)
   n = nb_vertices(data)
   V = [i for i in 1:n]
   T = data.T
+  C = data.C
   K = data.M
+  log = 1
+
   F´ = deepcopy(data.F)
   popfirst!(F´)
 
@@ -64,6 +67,13 @@ function getsolution(data::DataGVRP, optimizer::VrpOptimizer, x, objval, app::Di
     stack = CrayonStack()
     print(stack, "Route $k S: ", k)
     visited = [false for i in V]
+    print("[ ")  
+    for j in C
+      val = (log == 1) ? 0 : get_value(optimizer, LB_E[j])
+      print(val," ")
+    end
+    print("]")
+
     for i in V
       for j in V
         #if visited[j] continue end
