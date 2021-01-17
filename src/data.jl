@@ -271,39 +271,45 @@ dimension(data::DataGVRP) = length(data.G´.V´) # return number of vertices
 nb_vertices(data::DataGVRP) = length(vertices(data))
 
 function min_LB_E_j(data::DataGVRP)
-  #LB_E = [i for i in C[i]:length(data.C)]#[0.0 for j in data.C]
-  #LB_E = deepcopy(data.C)
-  #[LB_E = 0.0 for j = 0 in length(data.C)]
-  #LB_E = [j for j in 0:length(data.C)]
-  #for j in 0:1:length(data.C)
-  #for j in length(data.C)
-  #  push!(data.LB_E, 0.0)
-  #end
-  #LB_E = [0.0 , 0.0, 0.0, 0.0]
-  #data.LB_E = fill( 0.0, length(data.C) )
-  #data.LB_E[0] = 1.0
-  #setindex!(data.LB_E, 0.0, 0)
-  #println("LB_E: ", data.LB_E[0])
-  #set_additional_vertex_elementarity_sets!(gvrp, [(G,[f]) for f in data.F])
+  C´ = Array{Int64}
+  C´ = []
+  push!(C´, 1 )
   for j in data.C
-    e_jf = Array{Int64}
-    e_jr = Array{Int64}
-    e_jf = []
-    e_jr = []
-    push!(e_jf,0) 
-    push!(e_jf,0)
-    push!(e_jr,0) 
-    push!(e_jr,0)
-    for _f in data.C
-      for _r in data.C
-        if f( data, ed( _f, _r ) ) > 0
+    push!(C´, j )
+  end
+  e_jf = Array{Int64}
+  e_jr = Array{Int64}
+  e_jf = []
+  e_jr = []
+  push!(e_jf,0) 
+  push!(e_jf,0)
+  push!(e_jr,0) 
+  push!(e_jr,0)
+
+  # se vc se refere ao  t_{f}^{'} da tese, eles são calculados pelo 
+  # caminho minimo de f ao deposito no grapfo induzido de AFSs com arestas de peso <= beta
+  
+  # bem se ele tem limite de tempo <= T e todas as arestas tem combustivel <= beta, 
+  # então ele é viaável
+  for j in C´
+    for _f in data.F
+      for _r in data.F
+        t_f = t_r = 0
+        for i in 1:1:nb_vertices(data)
+          t_f += t( data, ed( i, _f ) )
+          t_r += t( data, ed( i, _r ) )
+        end
+        if t_f + t( data, ed( _f, j ) ) + t( data, ed( j, _r ) ) + t_r <= data.T && f( data, ed( _f, j ) ) + f( data, ed( j, _r ) ) <= data.β
+          e_jf[1], e_jf[2] = j, _f
+          e_jr[1], e_jr[2] = j, _r
         end
         #LB_E[i] = f(data, ed(i, j))
       end
     end
-    #push!( data.LB_E, min( f( data, ed( e_jf[0], e_jf[1] ) ) , f( data, ed( e_jr[0], e_jr[1] ) ) ) )
+    push!( data.LB_E, min( f( data, ed( e_jf[1], e_jf[2] ) ) , f( data, ed( e_jr[1], e_jr[2] ) ) ) )
   end
 end
+
 function lowerBoundNbVehicles(data::DataGVRP) 
    sum_demand = 0
    alpha = nb_vertices(data)
