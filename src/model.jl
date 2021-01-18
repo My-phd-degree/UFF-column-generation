@@ -120,7 +120,7 @@ function build_model(data::DataGVRP)
             set_arc_consumption!(G, arc_id, fuel_res_id, 0.0)
         end
         #"""
-        println("OKAY 2")
+        println("OKAY 2 - TESTAR")
         for k in K
             for i in V
                 for j in V
