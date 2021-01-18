@@ -18,7 +18,6 @@ function build_model(data::DataGVRP)
     K = M
     FM = data.FM
     added_cuts = []
-    #LB_E = C
 
     println("----------------------------------------")
     if length(data.E´) > 0
@@ -64,9 +63,9 @@ function build_model(data::DataGVRP)
 
                   #deg_6_8_00[j in C], data.LB_E[j] <= data.max_ed
                   #deg_6_8_01[j in C], data.LB_E[j] >= data.min_ed
-                  #deg_6_8_1[i in C], data.LB_E[i] <= e[i]
-
-                  deg_6_8_2[i in C],  e[i] <= data.β #- data.LB_E[i]
+                  
+                  deg_6_8_1[i in C], get_LB_E(data, i) <= e[i]
+                  deg_6_8_2[i in C],  e[i] <= data.β - get_LB_E(data, i)
 
 
                   deg_6_9[k in M], sum(x[i, j, k] * (t(data, ed(i, j)) + data.G´.V´[i].service_time) for i in V, j in V if (i!=j && !((i, j) in data.E´) ) ) <= T
