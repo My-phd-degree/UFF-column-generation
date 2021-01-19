@@ -4,11 +4,13 @@
 #Pkg.add("Plots")
 #Pkg.add("GraphRecipes")
 #Pkg.add("LightGraphs")
+#Pkg.add("Printf")
 
 using Crayons                   # https://github.com/KristofferC/Crayons.jl
 using Crayons.Box               # ...
 using GraphRecipes, Plots       # https://docs.juliaplots.org/latest/tutorial/#tutorial
 using LightGraphs               # https://docs.juliaplots.org/latest/graphrecipes/examples/
+#using Printf
 
 mutable struct Solution
   cost::Union{Int,Float64}
@@ -23,7 +25,6 @@ function getsolution(data::DataGVRP, optimizer::VrpOptimizer, x, e, objval, app:
   T = data.T
   C = data.C
   K = data.M
-  log = 1
 
   F´ = deepcopy(data.F)
   popfirst!(F´)
@@ -116,6 +117,53 @@ function getsolution(data::DataGVRP, optimizer::VrpOptimizer, x, e, objval, app:
   end
 end
 
+function print_matrix(data::DataGVRP, value)
+  n = nb_vertices(data)
+  V = [i for i in 1:n]
+  F´ = deepcopy(data.F)
+  popfirst!(F´)
+
+  println("\nMatrix Costs ($value):\n")
+  print("\t")
+  for j in V
+    stack = CrayonStack()
+    if j in F´
+      print(GREEN_FG, j, "\t")
+    else
+      print(stack, j, "\t")
+    end
+  end
+  println("\n")
+  for i in V
+    stack = CrayonStack()
+    if i in F´
+      print(GREEN_FG, i, "\t")
+    else
+      print(stack, i, "\t")
+    end
+    for j in V
+      if i != j && !((i, j) in data.E´) 
+        stack = CrayonStack()
+          if value == "distance_cost"
+            print(stack, data.G´.cost[ed(i, j)], "\t") 
+          elseif value == "fuel_cost"
+            #sprintf("%.3f",999999.9999)
+            print(stack, f(data, ed(j, i)), "\t")
+          elseif value == "time_cost"
+            print(stack, t(data, ed(i, j)), "\t")
+          else
+            println("...")
+          end
+      else
+        print(RED_FG, "***", "\t")
+        stack = CrayonStack()
+      end
+    end
+    println("")
+  end
+  stack = CrayonStack()
+  println(stack,"")
+end
 function print_routes(solution)
   #x = 1:10; y = rand(10); # These are the plotting data
   #plot(x, y)

@@ -79,7 +79,8 @@ function run_gvrp(app::Dict{String,Any})
         optimizer = VrpOptimizer(model, app["cfg"], instance_name)
         set_cutoff!(optimizer, app["ub"])
         
-        (status, solution_found) = optimize!(optimizer)
+        #(status, solution_found) = optimize!(optimizer)
+        solution_found = status = false
         if solution_found
             sol = getsolution(data, optimizer, x, e, get_objective_value(optimizer), app)
         end

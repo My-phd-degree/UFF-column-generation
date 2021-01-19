@@ -4,6 +4,11 @@ using Random
 using Crayons
 using Crayons.Box
 
+MAX_INT     = 999999999
+MAX_DOUBLE  = 999999999
+
+MIN_DOUBLE  = -9.999999999999e8
+
 mutable struct Vertex
     id_vertex::Int64
     pos_x::Float64
@@ -30,8 +35,12 @@ mutable struct DataGVRP
     ρ::Float64 # Vehicle fuel comsumption rate
     ε::Float64 # Vehicle average speed
     m::Int64 # Qtd of vehicles
-    max_ed::Float64
-    min_ed::Float64
+    max_d::Float64
+    min_d::Float64
+    max_f::Float64
+    min_f::Float64
+    max_t::Float64
+    min_t::Float64
     LB_E::Array{Float64}
 end
 
@@ -58,8 +67,8 @@ function GEO_dist(u::Vertex, v::Vertex)
     #    return haversine((v.pos_x, v.pos_y), (u.pos_x, u.pos_y), 4182.44949)
     x_sq = (v.pos_x - u.pos_x)^2
     y_sq = (v.pos_y - u.pos_y)^2
-    return floor(sqrt(x_sq + y_sq) + 0.5)
-    #return sqrt(x_sq + y_sq) + 0.5
+    #return floor(sqrt(x_sq + y_sq) + 0.5)
+    return sqrt(x_sq + y_sq) + 0.5
 end
 
 # EUC_2D distance
@@ -73,15 +82,15 @@ contains(p, s) = findnext(s, p, 1) != nothing
 
 function readEMHInstance(app::Dict{String,Any})
     G´ = InputGraph([], [], Dict())
-    data = DataGVRP(G´, [], [], [], [], [], 0.0, 0.0, 0.0, 0.0, 0, 0.0, 0.0,[])
+    data = DataGVRP(G´, [], [], [], [], [], 0.0, 0.0, 0.0, 0.0, 0, 0.0, 0.0,0.0,0.0,0.0,0.0,[])
 
     open(app["instance"]) do f
       # Ignore header
       readline(f)
       # Read vertices
       i = 1
-      data.max_ed = 0.0
-      data.min_ed = 999999999.9999
+      data.max_d = data.max_f = data.max_t = 0.0
+      data.min_d = data.min_f = data.min_t = 999999999.9999
       while !eof(f)
         line = readline(f)
         aux = split(line, ['\t']; limit=0, keepempty=false)
@@ -152,28 +161,43 @@ function readEMHInstance(app::Dict{String,Any})
           push!(G´.E, e) # add edge e
           if i < j && !((i, j) in data.E´)
             data.G´.cost[e] = distance(data, e)
-            data.max_ed = ( data.max_ed < f(data, ed(i, j)) ) ? f(data, ed(i, j)) : 0.0
-            data.min_ed = ( data.min_ed > f(data, ed(i, j)) ) ? f(data, ed(i, j)) : 999999999.9999
+            data.max_d  = ( data.max_d < d(data, ed(i, j)) ) ? d(data, ed(i, j)) : data.max_d
+            data.max_f  = ( data.max_f < f(data, ed(i, j)) ) ? f(data, ed(i, j)) : data.max_f
+            data.max_t  = ( data.max_t < t(data, ed(i, j)) ) ? t(data, ed(i, j)) : data.max_t
+
+            data.min_d = ( data.min_d > d(data, ed(i, j)) ) ? d(data, ed(i, j)) : data.min_d
+            data.max_f = ( data.max_f > f(data, ed(i, j)) ) ? f(data, ed(i, j)) : data.max_f
+            data.max_t = ( data.max_t > t(data, ed(i, j)) ) ? t(data, ed(i, j)) : data.max_t
           else
             data.G´.cost[e] = 999999999.9999
           end
         elseif i < j
             push!(G´.E, e) # add edge e
             data.G´.cost[e] = distance(data, e)
-            #println( data.max_ed, " <= " , f(data, ed(i, j)) , " ", (data.max_ed <= f(data, ed(i, j)) ) ? true : false )
-            data.max_ed = ( data.max_ed < f(data, ed(i, j)) ) ? f(data, ed(i, j)) : data.max_ed
-            data.min_ed = ( data.min_ed > f(data, ed(i, j)) ) ? f(data, ed(i, j)) : 999999999.9999
+            data.max_d  = ( data.max_d < d(data, ed(i, j)) ) ? d(data, ed(i, j)) : data.max_d
+            data.max_f  = ( data.max_f < f(data, ed(i, j)) ) ? f(data, ed(i, j)) : data.max_f
+            data.max_t  = ( data.max_t < t(data, ed(i, j)) ) ? t(data, ed(i, j)) : data.max_t
+
+            data.min_d = ( data.min_d > d(data, ed(i, j)) ) ? d(data, ed(i, j)) : data.min_d
+            data.max_f = ( data.max_f > f(data, ed(i, j)) ) ? f(data, ed(i, j)) : data.max_f
+            data.max_t = ( data.max_t > t(data, ed(i, j)) ) ? t(data, ed(i, j)) : data.max_t
         end
       end
     end
-    min_LB_E_j(data)
+    #min_LB_E_j(data)
+    # 1 -> 5
+    println( "cost_BFS_path (5, 4): " , dijsktra(data,5,4))
+    println( "cost_BFS_path (2, 5): " , dijsktra(data,5,4))
+    print_matrix(data, "fuel_cost")
+    print_matrix(data, "time_cost")
+    print_matrix(data, "distance_cost")
     return data
 end
 
 # fix bugs
 function readMatheusInstance(app::Dict{String,Any})
     G´ = InputGraph([], [], Dict())
-    data = DataGVRP(G´, [], [], [], [], [], 0.0, 0.0, 0.0, 0.0, 0, 0.0, 0.0, [])
+    data = DataGVRP(G´, [], [], [], [], [], 0.0, 0.0, 0.0, 0.0, 0, 0.0, 0.0,0.0,0.0,0.0,0.0,[])
     sepChar = ';'
     open(app["instance"]) do f
       # vehicle data
@@ -287,8 +311,128 @@ function get_LB_E(data::DataGVRP, index::Integer)
   return value
 end
 
-function dijsktra(data::DataGVRP, _init::Integer, _end::Integer)
-  return path
+function fill_with(x, value)
+  x[:] .= value
+end
+
+# fix "bug"
+# https://stackoverflow.com/questions/62550582/error-loaderror-boundserror-attempt-to-access-0-element-arraycandidate-1-a
+#                                    5 -> 1
+function dijsktra(data::DataGVRP, source::Int64, target::Int64)
+  println("***********************************************************************")
+  E = edges(data) # set of edges of the input graph G´
+  n = nb_vertices(data)
+  V = [i for i in 1:n] # set of vertices of the input graph G´
+  V´= [i for i in 2:n]
+
+  dist = Array{Float64}(undef, n)   # int dist[N]
+  prev = Array{Float64}(undef, n)   # int prev[N]
+  selected = zeros(Int64, n)        # selected[N]={0}
+  fill_with(selected, 0)
+  #selected = []
+  #push!(selected, 0)
+
+  #i = m = min = start = d = j = 1   # index in Julia starts (for this implementation) in 1 not in 0 (like C/C++)
+  i::Int64 = 1 
+  m::Int64 = 1
+  min::Float64 = 1
+  start::Int64 = 1
+  d::Float64 = 1
+  j::Int64 = 1
+
+  path = Array{Int64}(undef, n)
+
+  for i in V
+    dist[i] = MAX_DOUBLE
+    prev[i] = -1
+  end
+  start = source
+  selected[start] = 2               # second item
+  dist[start] = 1                   # first item
+  #println("0 -> ", selected)
+  while selected[target] == 1
+    min = MAX_DOUBLE
+    m = 1
+    for i in V´
+      c = 999999999
+      if ( (start, j) in data.E´ || start == j )
+        c = data.G´.cost[ ed(start, i) ]
+      end
+      d = dist[start] + c
+
+      if d < dist[i] && selected[i] == 1
+        dist[i] = d
+        prev[i] = start
+      elseif min > dist[i] && selected[i] == 1
+        min = dist[i]
+        m = i
+      end
+    end
+    start = m
+    #  selected[start] = 1;
+    println("-> ", selected)
+    selected[start] = 2
+    #break
+  end
+  start = target
+  j = 1
+  while start != -1
+        #j++
+        j += 1
+        path[j] = start#+65;
+        start = prev[start]#;
+  end
+
+  #path[j]='\0';
+  #strrev(path);
+  #printf("%s", path);
+  return dist[target];
+
+  """
+    int dist[N],prev[N],selected[N]={0},i,m,min,start,d,j;
+    char path[N];
+    for(i=1;i< N;i++)
+    {
+        dist[i] = IN;
+        prev[i] = -1;
+    }
+    start = source;
+    selected[start]=1;
+    dist[start] = 0;
+    while(selected[target] ==0)
+    {
+        min = IN;
+        m = 0;
+        for(i=1;i< N;i++)
+        {
+            d = dist[start] +cost[start][i];
+            if(d< dist[i]&&selected[i]==0)
+            {
+                dist[i] = d;
+                prev[i] = start;
+            }
+            if(min>dist[i] && selected[i]==0)
+            {
+                min = dist[i];
+                m = i;
+            }
+        }
+        start = m;
+        selected[start] = 1;
+    }
+    start = target;
+    j = 0;
+    while(start != -1)
+    {
+        path[j++] = start+65;
+        start = prev[start];
+    }
+    path[j]=' 0';
+    strrev(path);
+    printf("s", path);
+    return dist[target];
+"""
+  #return 0.0
 end
 
 # min path cost i to j (satisfying problem restrictions)
@@ -301,33 +445,43 @@ function cost_BFS_path(data::DataGVRP, ii::Integer, jj::Integer)
   #heurística p/ embaralhar a ordem de inicio da BFS ou algoritmo posterior
   s1 = V[ ii ]
   s2 = deepcopy(V)
-  popfirst!(s2) 
-  filter!(e->e≠ii,s2) 
-  #s3 = s2[randperm(length(s2))]
-  s3 = deepcopy(s2)                    # preserva a ordem 
-  V´ = [ s1; s3; [jj] ]
-  print(GREEN_FG, ii, " ", jj, " [\t")
+  #popfirst!(s2) 
+  filter!(e->e≠ii,s2)
+  filter!(e->e≠jj,s2) 
+  
+  s3 = s2[randperm(length(s2))]
+  #s3 = deepcopy(s2)                    # preserva a ordem 
+  
+  V´ = [ s1; [jj]; s3 ]
+  print(BLUE_FG, ii, " ", jj, " ")
   stack = CrayonStack()
-  print(stack, " ")
+  print(stack, "[\t ")
+  #print(stack, " ")
   for i in V´ 
-    if i == 1 || i ==length(V´)+1
-      print(GREEN_FG, i, "\t")
+    stack = CrayonStack()
+    if i == ii || i == jj || i in data.F || i ==length(V´)+1
+      if (i == ii || i == jj)
+        print(BLUE_FG, "[", i, "]\t")
+      elseif i in data.F && !(i == ii || i == jj)
+        print(GREEN_FG, "[", i, "]\t")
+      else
+        print(stack, "[", i, "]\t")
+      end
     else
-      stack = CrayonStack()
       print(stack, i, "\t")
     end
   end
   stack = CrayonStack()
-  println(stack, "]")
+  println(stack, "] β: ",data.β," ","T: ",data.T)
   #---------------------------------------------------------
   
   s = V[1]                                                  #V[i] começa a BFS apartir do i até 1
   visited = [false for i in V]
 
-  time_cost = data.G´.V´[ ii ].service_time                  # começa zerado OU atente o i e depois começa a rota
-  residual_fuel_cost = data.β
-  total_fuel_cost = data.β                                  # veículo já sai cheio do depósito (otimizar: veículo sai com o suficiente p/ sair)
-  obj_cost = 0.0
+  time_cost           = data.G´.V´[ ii ].service_time                  # começa zerado OU atente o i e depois começa a rota
+  residual_fuel_cost  = data.β
+  total_fuel_cost     = data.β                                  # veículo já sai cheio do depósito (otimizar: veículo sai com o suficiente p/ sair)
+  total_distance_cost = 0.0
 
   #"""
   for c in V
@@ -347,7 +501,7 @@ function cost_BFS_path(data::DataGVRP, ii::Integer, jj::Integer)
           visited[j] = true
           push!(q, j)
           push!(comp, j)
-          time_cost += t( data, ed( i, j ) ) + data.G´.V´[j].service_time
+          time_cost += t( data, ed( i, j ) ) + data.G´.V´[i].service_time # é um lower_bound, add o último e posteriorente viabilidade em combustível
           total_fuel_cost += f( data, ed( i, j ) )    # lower_bound, f( data, ed( i, j ) ) + residual
           obj_cost += data.G´.cost[ed(i, j)]
         end
@@ -362,8 +516,9 @@ function cost_BFS_path(data::DataGVRP, ii::Integer, jj::Integer)
           if i in data.F
             residual_fuel_cost = data.β
           end
-          residual_fuel_cost = residual_fuel_cost - f( data, ed( i, j ) )
-          total_fuel_cost += f( data, ed( i, j ) ) + residual_fuel_cost
+          residual_fuel_cost  = residual_fuel_cost - f( data, ed( i, j ) )
+          total_fuel_cost     += f( data, ed( i, j ) ) + residual_fuel_cost
+          total_distance_cost += data.G´.cost[ed(i, j)]
         end
         #"""
       end
@@ -373,6 +528,9 @@ function cost_BFS_path(data::DataGVRP, ii::Integer, jj::Integer)
     end
   end
   #"""
+  println("total_distance_cost: $total_distance_cost total_fuel_cost: $total_fuel_cost residual_fuel_cost: $residual_fuel_cost time_cost: $time_cost")
+  #return total_fuel_cost
+  #return residual_fuel_cost
   return time_cost
 end
 
@@ -393,8 +551,8 @@ function min_LB_E_j(data::DataGVRP)
   push!(e_jr,0) 
   push!(e_jr,0)
 
-  min_cost_e_jf0 = 999999999.9999
-  min_cost_e_jr0 = 999999999.9999
+  min_cost_e_jf1 = 999999999.9999
+  min_cost_e_jr1 = 999999999.9999
   # se vc se refere ao  t_{f}^{'} da tese, eles são calculados pelo 
   # caminho minimo de f ao deposito no grafo induzido de AFSs com arestas de peso <= beta
   
@@ -405,13 +563,19 @@ function min_LB_E_j(data::DataGVRP)
       for _r in data.F
         if _f < _r && ( _f!=1 && _r!=1 ) && !(( _f, _r ) in data.E´)
           t_f = t_r = 0
-
-          t_f = cost_BFS_path(data, _f, 1)#data.G´.V´[1]
-          t_r = cost_BFS_path(data, _r, 1)#data.G´.V´[1]
+          jj = 1
+          
+          # minimum cost path _f -> jj
+          t_f = dijsktra(data, jj, _f)
+          # minimum cost path _r -> jj
+          t_r = dijsktra(data, jj, _r)
+          
+          #t_f = cost_BFS_path(data, _f, jj)
+          #t_r = cost_BFS_path(data, _r, jj)
 
           if t_f + t( data, ed( _f, j ) ) + t( data, ed( j, _r ) ) + t_r <= data.T && f( data, ed( _f, j ) ) + f( data, ed( j, _r ) ) <= data.β
-            if min_cost_e_jf0 > t_f
-              min_cost_e_jf0 = t_f
+            if min_cost_e_jf1 > t_f
+              min_cost_e_jf1 = t_f
               e_jf[1], e_jf[2] = j, _f
             elseif min_cost_e_jr0 > t_r
               min_cost_e_jr0 = t_r
@@ -422,11 +586,11 @@ function min_LB_E_j(data::DataGVRP)
         end
       end
     end
+    push!( data.LB_E, 0.0 )
     #push!( data.LB_E, 9.9 )
-    push!( data.LB_E, min( f( data, ed( e_jf[1], e_jf[2] ) ) , f( data, ed( e_jr[1], e_jr[2] ) ) ) )
-    #push!( data.LB_E, min( min_cost_e_jf0 , min_cost_e_jr0 ) )
+    #push!( data.LB_E, min( f( data, ed( e_jf[1], e_jf[2] ) ) , f( data, ed( e_jr[1], e_jr[2] ) ) ) )
+    #push!( data.LB_E, min( min_cost_e_jf1 , min_cost_e_jr1 ) )
   end
-
 end
 
 function lowerBoundNbVehicles(data::DataGVRP) 

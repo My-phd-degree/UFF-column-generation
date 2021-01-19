@@ -26,7 +26,10 @@ function build_model(data::DataGVRP)
         println(data.E´)
     end
     println("----------------------------------------")
-    println(data.min_ed, " - " , data.max_ed)
+    println("min_d: ", data.min_d, " - " , "max_d: ", data.max_d)
+    println("min_f: ", data.min_f, " - " , "max_f: ", data.max_f)
+    println("min_t: ", data.min_t, " - " , "max_t: ", data.max_t)
+
     println("----------------------------------------")
     println("AFs:")
     for f in F´ 
@@ -44,7 +47,7 @@ function build_model(data::DataGVRP)
 
     @variable(gvrp.formulation, 0 <= x[i in V, j in V, k in M] <= 1, Int)
     @variable(gvrp.formulation, 0 <= e[i in C] <= data.β)
-    #@variable(gvrp.formulation, data.min_ed <= LB_E[j in C] <= data.max_ed)
+    #@variable(gvrp.formulation, data.min_d <= LB_E[j in C] <= data.max_d)
 
     @objective(gvrp.formulation, Min, sum( data.G´.cost[ed(i, j)] * x[i,j,k] for i in V, j in V, k in M if i != j && !((i, j) in data.E´)  ) )
 
@@ -61,12 +64,14 @@ function build_model(data::DataGVRP)
                   
                   deg_6_7_2[j in C],  sum( f(data, ed(j, ff))*x[j,ff,k] for k in M , ff in data.F if !( (j, ff) in data.E´ ) ) <= e[j]
 
-                  #deg_6_8_00[j in C], data.LB_E[j] <= data.max_ed
-                  #deg_6_8_01[j in C], data.LB_E[j] >= data.min_ed
+                  #deg_6_8_00[j in C], data.LB_E[j] <= data.max_d
+                  #deg_6_8_01[j in C], data.LB_E[j] >= data.min_d
                   
-                  deg_6_8_1[i in C], get_LB_E(data, i) <= e[i]
-                  deg_6_8_2[i in C],  e[i] <= data.β - get_LB_E(data, i)
+                  #deg_6_8_1[i in C], get_LB_E(data, i) <= e[i]
+                  #deg_6_8_2[i in C],  e[i] <= data.β - get_LB_E(data, i)
 
+                  deg_6_8_1[i in C], 0.0 <= e[i]
+                  deg_6_8_2[i in C],  e[i] <= data.β - 0.0
 
                   deg_6_9[k in M], sum(x[i, j, k] * (t(data, ed(i, j)) + data.G´.V´[i].service_time) for i in V, j in V if (i!=j && !((i, j) in data.E´) ) ) <= T
 
@@ -305,7 +310,7 @@ function build_model(data::DataGVRP)
 
         set_vertex_packing_sets!(gvrp, [[(G, i)] for i in C])
         set_additional_vertex_elementarity_sets!(gvrp, [(G,[f]) for f in data.F])
-        define_elementarity_sets_distance_matrix!(gvrp, G, [[ ((i, j) in data.E´) ? 999999999.9999 : d(data,ed(i, j) ) for i in V] for j in V])
+        define_elementarity_sets_distance_matrix!(gvrp, G, [ [ d(data,ed(i, j) ) for i in V] for j in V])
 
         add_capacity_cut_separator!(gvrp, [ ([(G, i)], 2.0*ceil(data.G´.V´[i].service_time) ) for i in C], 2.0*ceil(data.T) )
 
