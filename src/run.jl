@@ -2,7 +2,9 @@ using VrpSolver, JuMP, ArgParse
 #import Pkg
 #Pkg.add("Distances")
 
-# using CPLEX
+#using JuMP, Gurobi
+#using CPLEX
+
 include("data.jl")
 include("model.jl")
 include("solution.jl")

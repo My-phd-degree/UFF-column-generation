@@ -83,6 +83,9 @@ contains(p, s) = findnext(s, p, 1) != nothing
 function readEMHInstance(app::Dict{String,Any})
     G´ = InputGraph([], [], Dict())
     data = DataGVRP(G´, [], [], [], [], [], 0.0, 0.0, 0.0, 0.0, 0, 0.0, 0.0,0.0,0.0,0.0,0.0,[])
+    
+    #graph = Vector{Tuple{Int64,Float64,Float64}}
+    graph = [(0, 0, 999999999)]
 
     open(app["instance"]) do f
       # Ignore header
@@ -143,6 +146,8 @@ function readEMHInstance(app::Dict{String,Any})
 
     #read preprocessings
     data.E´ = []
+    #graph = []
+
     if haskey(app, "preprocessings") && app["preprocessings"] != nothing
       open(app["preprocessings"]) do f
         while !eof(f)
@@ -173,7 +178,13 @@ function readEMHInstance(app::Dict{String,Any})
           end
         elseif i < j
             push!(G´.E, e) # add edge e
+            #edges::Vector{Tuple{U,U,T}}
             data.G´.cost[e] = distance(data, e)
+            #push!(graph, ( i, j, d(data, ed(i, j)) ) )
+            cost = 999 # d(data, ed(i, j)) 
+            #cost = convert(AbstractFloat, x )
+            append!( graph, [ (i, j , cost ) ] )
+
             data.max_d  = ( data.max_d < d(data, ed(i, j)) ) ? d(data, ed(i, j)) : data.max_d
             data.max_f  = ( data.max_f < f(data, ed(i, j)) ) ? f(data, ed(i, j)) : data.max_f
             data.max_t  = ( data.max_t < t(data, ed(i, j)) ) ? t(data, ed(i, j)) : data.max_t
@@ -184,10 +195,21 @@ function readEMHInstance(app::Dict{String,Any})
         end
       end
     end
+
+    testgraph = [(1, 2, 1), (2, 4, 2), (1, 4, 4)]
+    
+    g = Digraph(graph)
+    #g  = Digraph(testgraph)
+
+    src, dst = 1, 4
+    path, cost = dijkstrapath(g, src, dst)
+
+    println("Shortest path from $src to $dst: ", isempty(path) ? "no possible path" : join(path, " → "), " (cost $cost)")
+
     #min_LB_E_j(data)
     # 1 -> 5
-    println( "cost_BFS_path (5, 4): " , dijsktra(data,5,4))
-    println( "cost_BFS_path (2, 5): " , dijsktra(data,5,4))
+    #println( "cost_BFS_path (5, 4): " , dijsktra(data,5,4))
+    #println( "cost_BFS_path (2, 5): " , dijsktra(data,2,5))
     print_matrix(data, "fuel_cost")
     print_matrix(data, "time_cost")
     print_matrix(data, "distance_cost")
@@ -317,7 +339,7 @@ end
 
 # fix "bug"
 # https://stackoverflow.com/questions/62550582/error-loaderror-boundserror-attempt-to-access-0-element-arraycandidate-1-a
-#                                    5 -> 1
+#                           5 -> 4             2 -> 5
 function dijsktra(data::DataGVRP, source::Int64, target::Int64)
   println("***********************************************************************")
   E = edges(data) # set of edges of the input graph G´
@@ -331,38 +353,40 @@ function dijsktra(data::DataGVRP, source::Int64, target::Int64)
   fill_with(selected, 0)
   #selected = []
   #push!(selected, 0)
-
-  #i = m = min = start = d = j = 1   # index in Julia starts (for this implementation) in 1 not in 0 (like C/C++)
-  i::Int64 = 1 
-  m::Int64 = 1
-  min::Float64 = 1
-  start::Int64 = 1
-  d::Float64 = 1
-  j::Int64 = 1
-
   path = Array{Int64}(undef, n)
 
-  for i in V
-    dist[i] = MAX_DOUBLE
+  #i = m = min = start = d = j = 1   # index in Julia starts (for this implementation) in 1 not in 0 (like C/C++)
+  #i::Int64      = 1 
+  #m::Int64      = 1
+  #min::Float64  = 1
+  #start::Int64  = 1
+  #d::Float64    = 1
+  #j::Int64      = 1
+
+  for i in V´
+    dist[i] = 999999999
     prev[i] = -1
   end
   start = source
   selected[start] = 2               # second item
-  dist[start] = 1                   # first item
-  #println("0 -> ", selected)
-  while selected[target] == 1
-    min = MAX_DOUBLE
+  dist[start] = 0                   # first item
+  
+  println(target," -> ", selected)
+  println(start," -> ", selected[target])
+  if selected[target] == 1 println("entra while") end
+  while selected[target] == 0
+    min = 999999999
     m = 1
     for i in V´
       c = 999999999
-      if ( (start, j) in data.E´ || start == j )
-        c = data.G´.cost[ ed(start, i) ]
+      if !( (start+1, i) in data.E´ || start+1 == i )
+        c = data.G´.cost[ ed(start+1, i) ]
       end
-      d = dist[start] + c
+      d = dist[start+1] + c
 
       if d < dist[i] && selected[i] == 1
         dist[i] = d
-        prev[i] = start
+        prev[i] = start+1
       elseif min > dist[i] && selected[i] == 1
         min = dist[i]
         m = i
@@ -370,7 +394,7 @@ function dijsktra(data::DataGVRP, source::Int64, target::Int64)
     end
     start = m
     #  selected[start] = 1;
-    println("-> ", selected)
+    println("*-> ", selected)
     selected[start] = 2
     #break
   end
@@ -378,8 +402,8 @@ function dijsktra(data::DataGVRP, source::Int64, target::Int64)
   j = 1
   while start != -1
         #j++
-        j += 1
         path[j] = start#+65;
+        j += 1
         start = prev[start]#;
   end
 
@@ -431,7 +455,7 @@ function dijsktra(data::DataGVRP, source::Int64, target::Int64)
     strrev(path);
     printf("s", path);
     return dist[target];
-"""
+  """
   #return 0.0
 end
 
@@ -615,3 +639,73 @@ function δ(data::DataGVRP, i::Integer)
     for j in i + 1:(length(data.G´.V´)) push!(incident_edges, (i, j)) end
     return incident_edges
 end
+
+#--------------------------------------------------------------------------------------
+struct Digraph{T <: Real,U}
+    edges::Dict{Tuple{U,U},T}
+    verts::Set{U}
+end
+ 
+function Digraph(edges::Vector{Tuple{U,U,T}}) where {T <: Real,U}
+    vnames = Set{U}(v for edge in edges for v in edge[1:2])
+    adjmat = Dict((edge[1], edge[2]) => edge[3] for edge in edges)
+    return Digraph(adjmat, vnames)
+end
+ 
+vertices(g::Digraph) = g.verts
+edges(g::Digraph)    = g.edges
+ 
+neighbours(g::Digraph, v) = Set((b, c) for ((a, b), c) in edges(g) if a == v)
+ 
+function dijkstrapath(g::Digraph{T,U}, source::U, dest::U) where {T, U}
+    @assert source ∈ vertices(g) "$source is not a vertex in the graph"
+ 
+    # Easy case
+    if source == dest return [source], 0 end
+    # Initialize variables
+    inf  = typemax(T)
+    dist = Dict(v => inf for v in vertices(g))
+    prev = Dict(v => v   for v in vertices(g))
+    dist[source] = 0
+    Q = copy(vertices(g))
+    neigh = Dict(v => neighbours(g, v) for v in vertices(g))
+ 
+    # Main loop
+    while !isempty(Q)
+        u = reduce((x, y) -> dist[x] < dist[y] ? x : y, Q)
+        pop!(Q, u)
+        if dist[u] == inf || u == dest break end
+        for (v, cost) in neigh[u]
+            alt = dist[u] + cost
+            if alt < dist[v]
+                dist[v] = alt
+                prev[v] = u
+            end
+        end
+    end
+ 
+    # Return path
+    rst, cost = U[], dist[dest]
+    if prev[dest] == dest
+        return rst, cost
+    else
+        while dest != source
+            pushfirst!(rst, dest)
+            dest = prev[dest]
+        end
+        pushfirst!(rst, dest)
+        return rst, cost
+    end
+end
+#--------------------------------------------------------------------------------------
+#testgraph = [("a", "b", 7),  ("a", "c", 9),  ("a", "f", 14), ("b", "c", 10),
+#             ("b", "d", 15), ("c", "d", 11), ("c", "f", 2),  ("d", "e", 6),
+#             ("e", "f", 9)]
+
+# Print all possible paths
+# @printf("\n%4s | %3s | %s\n", "src", "dst", "path")
+# @printf("----------------\n")
+# for src in vertices(g), dst in vertices(g)
+#    path, cost = dijkstrapath(g, src, dst)
+#    @printf("%4s | %3s | %s\n", src, dst, isempty(path) ? "no possible path" : join(path, " → ") * " ($cost)")
+# end
