@@ -17,6 +17,7 @@ end
 
 mutable struct DataGVRP
     G′::InputGraph
+    depot_id ::Int
     F::Array{Int64} # AFSs nodes
     C::Array{Int64} # Customers nodes
     β::Float64 # Total distance between two consecutive black vertices
@@ -48,7 +49,7 @@ contains(p, s) = findnext(s, p, 1) != nothing
 
 function readEMHInstance(app::Dict{String,Any})
     G′ = InputGraph([], [], Dict())
-    data = DataGVRP(G′, [], [], 0.0, 0.0, 0.0, 0.0)
+    data = DataGVRP(G′, 1, [], [], 0.0, 0.0, 0.0, 0.0)
 
     open(app["instance"]) do f
       # Ignore header
@@ -65,14 +66,14 @@ function readEMHInstance(app::Dict{String,Any})
         v.pos_x = parse(Float64, aux[3])
         v.pos_y = parse(Float64, aux[4])
         push!(G′.V′, v) 
-        if aux[2] == "f" || aux[2] == "d"
+        if aux[2] == "d"
+          v.service_time = 0
+        elseif aux[2] == "f"
           # Get AFS
-#          v.service_time = aux[2] == "f" ? 0.25 : 0
           v.service_time = aux[2] == "f" ? 15 : 0
           push!(data.F, v.id_vertex)
         elseif aux[2] == "c"
           # Get customer
-#          v.service_time = 0.5
           v.service_time = 30
           push!(data.C, v.id_vertex)
         end
@@ -123,7 +124,7 @@ end
 
 function readMatheusInstance(app::Dict{String,Any})
     G′ = InputGraph([], [], Dict())
-    data = DataGVRP(G′, [], [], 0.0, 0.0, 0.0, 0.0)
+    data = DataGVRP(G′, 1, [], [], 0.0, 0.0, 0.0, 0.0)
     sepChar = ';'
     open(app["instance"]) do f
       # vehicle data
@@ -148,10 +149,8 @@ function readMatheusInstance(app::Dict{String,Any})
       line = readline(f)
       aux = split(line, [sepChar]; limit=0, keepempty=false)
       v = Vertex(parse(Int, aux[1]) + 1, parse(Float64, aux[2]), parse(Float64, aux[3]), parse(Float64, aux[4]))
-      i = 1
-      push!(data.F, i)
       push!(G′.V′, v) 
-      i = i + 1
+      i = 2
       # get customers
       # ignore headers
       line = readline(f)

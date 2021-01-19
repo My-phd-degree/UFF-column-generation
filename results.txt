@@ -2,4 +2,10 @@ statistics_cols: instance & :Optimal & cutoff & :bcRecRootDb & :bcTimeRootEval &
 statistics: mlsa_flow_10c5f25 & 1 & 1.0e7 & 242.00 & 0.51 & 493 & 286.00 & 286 & 71.49 \\
 statistics: mlsa_flow_12c3f30 & 0 & 1.0e7 & 275.00 & 0.39 & 129 & 309.00 & 333 & 21.19 \\
 statistics: mlsa_flow_13c2f55 & 1 & 1.0e7 & 185.00 & 1.19 & 89 & 209.00 & 209 & 24.08
+statistics: mlsa_flow_13c5f30 & 0 & 1.0e7 & 243.00 & 0.59 & 585 & 290.00 & 295 & 173.37 \\
+statistics: mlsa_flow_13c7f25 & 0 & 1.0e7 & 276.00 & 1.14 & 883 & 317.00 & 318 & 215.33 \\
+statistics: mlsa_flow_14c5f30 & 0 & 1.0e7 & 281.00 & 0.72 & 115 & 308.00 & 319 & 30.38 \\
+statistics: mlsa_flow_14c7f25 & 1 & 1.0e7 & 283.00 & 0.94 & 1057 & 319.00 & 319 & 309.48 \\
+statistics: mlsa_flow_15c3f32 & 0 & 1.0e7 & 344.00 & 0.87 & 287 & 376.00 & 417 & 66.41 \\
+
 

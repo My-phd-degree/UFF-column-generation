@@ -35,7 +35,7 @@ function parse_commandline(args_array::Array{String,1}, appfolder::String)
         "--batch", "-b"
             help = "batch file path"
         "--instance_type", "-i"
-            help = "Select the instance type (EMH, MATHEUS)"
+            help = "Select the instance type (EMH, Matheus)"
             default = "EMH"
         "--verbose", "-v"
             help = "true to see the logs, false otherwise"

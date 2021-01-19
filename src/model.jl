@@ -119,13 +119,12 @@ function build_model(data::DataGVRP)
   n = nb_vertices(data)
   V = [i for i in 1:n] # set of vertices of the input graph G′
   V′ = [i for i in 0:n] # V ⋃ {0}, where 0 is a dummy vertex
+  depot_id = data.depot_id
 
   β = data.β
   C = data.C # Set of customers vertices
   F = data.F # Set of AFSs vertices
   T = data.T # Set of AFSs vertices
-  F´ = deepcopy(F) 
-  popfirst!(F´)
 
   ed(i, j) = i < j ? (i, j) : (j, i)
 
@@ -150,12 +149,11 @@ function build_model(data::DataGVRP)
   # Formulation
   gvrp = VrpModel()
   @variable(gvrp.formulation, x[e in E], Int)
-  @variable(gvrp.formulation, 2 * length(C) >= y[i in F] >= 0, Int)
+#  @variable(gvrp.formulation, 2 * length(C) >= y[i in F] >= 0, Int)
   @objective(gvrp.formulation, Min, sum(d(data, e) * x[e] for e in E))
   @constraint(gvrp.formulation, deg[i in C], sum(x[e] for e in δ(data, i)) == 2.0)
-  @constraint(gvrp.formulation, hotel_deg[i in F], sum(x[e] for e in δ(data, i)) == 2*y[i])
-  @constraint(gvrp.formulation, no_edge_between_afss[f in F´], sum(x[(f, r)] for r in F´ if (f, r) in E) == 0.0)
-  @constraint(gvrp.formulation, y[F[1]] >= 1)
+#  @constraint(gvrp.formulation, hotel_deg[i in F], sum(x[e] for e in δ(data, i)) == 2*y[i])
+  @constraint(gvrp.formulation, no_edge_between_afss[f in F], sum(x[(f, r)] for r in F if (f, r) in E) == 0.0)
 
 #  routes = [
 #          [0,1,10,3,10,0],
@@ -214,58 +212,79 @@ end
   # Build the model directed graph G=(V,A)
   function build_graph()
 
-    v_source = v_sink = 0
-#    L = U = length(F) # max and min number of paths is equal to number of AFSs
+    v_source = v_sink = 1
     L, U = 0, length(C) # max and min number of paths is equal to number of AFSs
 
+    V_ = deepcopy(V)
+
+    #AFSs vertex split
+    new_id = length(V_) + 1
+    afssIn = Dict{Int, Int}()
+    afssOut = Dict{Int, Int}()
+    for f in F
+      push!(V_, new_id)
+      afssIn[f] = new_id
+      push!(V_, new_id + 1)
+      afssOut[f] = new_id + 1
+      new_id = new_id + 2
+    end
+
     # node ids of G from 0 to |V|
-    G = VrpGraph(gvrp, V′, v_source, v_sink, (L, U))
+    G = VrpGraph(gvrp, V_, v_source, v_sink, (L, U))
+
     # resourves, R = R_M = {1,2} = {cap_res_id, fuel_res_id}}
+    
+    l_i_time, u_i_time = 0.0, T
     time_res_id = add_resource!(G, main=true)
+    l_i_fuel, u_i_fuel = 0.0, β
     fuel_res_id = add_resource!(G, main=true)
-    for i in V′
-      l_i_fuel, u_i_fuel = 0.0, β
-      set_resource_bounds!(G, i, fuel_res_id, l_i_fuel, u_i_fuel)
-      l_i_time, u_i_time = 0.0, T
-      set_resource_bounds!(G, i, time_res_id, l_i_time, u_i_time)
-    end
 
-    # Build set of arcs A from E′ (two arcs for each edge (i,j))
-    for f in F # setting the arcs between source, sink, and black vertices
-      # source -> i(AFS)
-      arc_id = add_arc!(G, v_source, f)
-      set_arc_consumption!(G, arc_id, time_res_id, data.G′.V′[f].service_time/2.0)
-      set_arc_consumption!(G, arc_id, fuel_res_id, 0.0)
-      # i(AFS) -> sink
-      arc_id = add_arc!(G, f, v_sink)
-      set_arc_consumption!(G, arc_id, time_res_id, data.G′.V′[f].service_time/2.0)
-      set_arc_consumption!(G, arc_id, fuel_res_id, 0.0)
-    end
-    for (i, j) in E
-      # add arcs i - > j
-      arc_id = add_arc!(G, i, j)
-      add_arc_var_mapping!(G, arc_id, x[(i, j)])
-
-      if i in F && j in F && i != F[1] && j != F[1]
-        set_arc_consumption!(G, arc_id, fuel_res_id, β + 1)
-      elseif i in F && j in F && i == F[1] || j == F[1]
-        set_arc_consumption!(G, arc_id, fuel_res_id, - f(data,(i,j)))
+    for i in V_
+      if i in F
+        set_resource_bounds!(G, afssIn[i], fuel_res_id, l_i_fuel, u_i_fuel)
+        set_resource_bounds!(G, afssIn[i], time_res_id, l_i_time, u_i_time)
+        set_resource_bounds!(G, afssOut[i], fuel_res_id, l_i_fuel, u_i_fuel)
+        set_resource_bounds!(G, afssOut[i], time_res_id, l_i_time, u_i_time)
       else
-        set_arc_consumption!(G, arc_id, fuel_res_id,  f(data,(i,j)))
+        set_resource_bounds!(G, i, fuel_res_id, l_i_fuel, u_i_fuel)
+        set_resource_bounds!(G, i, time_res_id, l_i_time, u_i_time)
       end
+    end
+
+    #edges
+    for (i, j) in E
+      if i in F && j in F
+         continue
+       end
+      # add arcs i - > j
+      arc_id = nothing
+      if j in F
+        arc_id = add_arc!(G, i, afssIn[j])
+      elseif i in F
+        arc_id = add_arc!(G, afssOut[i], j)
+      else
+        arc_id = add_arc!(G, i, j)
+      end
+      add_arc_var_mapping!(G, arc_id, x[(i, j)])
+      set_arc_consumption!(G, arc_id, fuel_res_id, f(data,(i,j)))
       set_arc_consumption!(G, arc_id, time_res_id, t(data,(i,j)))
       # add arcs j - > i
-      arc_id = add_arc!(G, j, i)
-      add_arc_var_mapping!(G, arc_id, x[(i, j)])
-
-      if i in F && j in F && i != F[1] && j != F[1]
-        set_arc_consumption!(G, arc_id, fuel_res_id, β + 1)
-      elseif i in F && j in F && i == F[1] || j == F[1]
-        set_arc_consumption!(G, arc_id, fuel_res_id, - f(data,(i,j)))
+      arc_id = nothing
+      if j in F
+        arc_id = add_arc!(G, afssOut[j], i)
+      elseif i in F
+        arc_id = add_arc!(G, j, afssIn[i])
       else
-        set_arc_consumption!(G, arc_id, fuel_res_id,  f(data,(i,j)))
+        arc_id = add_arc!(G, j, i)
       end
+      add_arc_var_mapping!(G, arc_id, x[(i, j)])
+      set_arc_consumption!(G, arc_id, fuel_res_id, f(data,(i,j)))
       set_arc_consumption!(G, arc_id, time_res_id, t(data,(i,j)))
+    end
+    for f in F
+      arc_id = add_arc!(G, afssIn[f], afssOut[f])
+      set_arc_consumption!(G, arc_id, fuel_res_id, - β)
+      set_arc_consumption!(G, arc_id, time_res_id, 0.0)
     end
     return G
   end
@@ -275,10 +294,21 @@ end
 
   set_vertex_packing_sets!(gvrp, [[(G, i)] for i in C])
 
-  define_elementarity_sets_distance_matrix!(gvrp, G, [[ed(i, j) in data.G′.E ? d(data, ed(i, j)) : 0.0 for i in C] for j in C])
+  define_elementarity_sets_distance_matrix!(gvrp, G, [[d(data, ed(i, j)) for i in C] for j in C])
 
+#  set_branching_priority!(gvrp, "y", 1)
   set_branching_priority!(gvrp, "x", 1)
-  set_branching_priority!(gvrp, "y", 1)
+
+   function edge_ub_callback()
+      for (i,j) in E
+        e = (i,j)
+         if i in C && j in C && get_value(gvrp.optimizer, x[e]) > 1.001
+            println("Adding edge ub cut for e = ", e)
+            add_dynamic_constr!(gvrp.optimizer, [x[e]], [1.0], <=, 1.0, "edge_ub")
+         end
+      end
+   end
+   add_cut_callback!(gvrp, edge_ub_callback, "edge_ub")
 
   function maxflow_mincut_callback()
     M = 100000
@@ -398,6 +428,6 @@ end
     end
     """
   end
-  add_cut_callback!(gvrp, maxflow_mincut_time_callback, "mincuttime")
+#  add_cut_callback!(gvrp, maxflow_mincut_time_callback, "mincuttime")
   return (gvrp, x)
 end
