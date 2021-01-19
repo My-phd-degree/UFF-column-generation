@@ -67,11 +67,11 @@ function build_model(data::DataGVRP)
                   #deg_6_8_00[j in C], data.LB_E[j] <= data.max_d
                   #deg_6_8_01[j in C], data.LB_E[j] >= data.min_d
                   
-                  #deg_6_8_1[i in C], get_LB_E(data, i) <= e[i]
-                  #deg_6_8_2[i in C],  e[i] <= data.β - get_LB_E(data, i)
+                  deg_6_8_1[i in C], get_LB_E(data, i) <= e[i]
+                  deg_6_8_2[i in C],  e[i] <= data.β - get_LB_E(data, i)
 
-                  deg_6_8_1[i in C], 0.0 <= e[i]
-                  deg_6_8_2[i in C],  e[i] <= data.β - 0.0
+                  #deg_6_8_1[i in C], 0.0 <= e[i]
+                  #deg_6_8_2[i in C],  e[i] <= data.β - 0.0
 
                   deg_6_9[k in M], sum(x[i, j, k] * (t(data, ed(i, j)) + data.G´.V´[i].service_time) for i in V, j in V if (i!=j && !((i, j) in data.E´) ) ) <= T
 

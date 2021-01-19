@@ -11,12 +11,12 @@ using Crayons.Box               # ...
 using GraphRecipes, Plots       # https://docs.juliaplots.org/latest/tutorial/#tutorial
 using LightGraphs               # https://docs.juliaplots.org/latest/graphrecipes/examples/
 #using Printf
-
+  
 mutable struct Solution
   cost::Union{Int,Float64}
   routes::Array{Array{Int}}
 end
-
+  
 # build Solution from the variables x
 function getsolution(data::DataGVRP, optimizer::VrpOptimizer, x, e, objval, app::Dict{String,Any})
   E, dim = edges(data), dimension(data)
@@ -32,7 +32,7 @@ function getsolution(data::DataGVRP, optimizer::VrpOptimizer, x, e, objval, app:
   adj_list = [[] for i in 1:dim]
   
 
-  println("\nMatrix Costs:\n")
+  println("\nMatrix Costs (time):\n")
   
   print("\t")
   for j in V
@@ -54,7 +54,8 @@ function getsolution(data::DataGVRP, optimizer::VrpOptimizer, x, e, objval, app:
     for j in V
       if i != j && !((i, j) in data.E´) 
         stack = CrayonStack()
-        print(stack, data.G´.cost[ed(i, j)], "\t")
+        print(stack, t(data, ed(i, j)), "\t")
+        #print(stack, data.G´.cost[ed(i, j)], "\t")
       else
         print(RED_FG, "***", "\t")
         stack = CrayonStack()
