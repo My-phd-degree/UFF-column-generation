@@ -81,6 +81,7 @@ function run_gvrp(app::Dict{String,Any})
     set_cutoff!(optimizer, app["ub"])
 
     (status, solution_found) = optimize!(optimizer)
+
     if solution_found
       sol = getsolution(data, optimizer, x, get_objective_value(optimizer), app)
     end

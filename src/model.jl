@@ -128,14 +128,14 @@ function build_model(data::DataGVRP)
 
   ed(i, j) = i < j ? (i, j) : (j, i)
 
-# println("Customers ")
-# for i in data.C
-#   println(i, " ", data.G′.V′[i], ", δ($i) = $(δ(data, i))")
-# end
-# println("AFSs ")
-# for i in data.F
-#   println(i, " ", data.G′.V′[i], ", δ($i) = $(δ(data, i))")
-# end
+ println("Customers ")
+ for i in data.C
+   println(i, " ", data.G′.V′[i], ", δ($i) = $(δ(data, i))")
+ end
+ println("AFSs ")
+ for i in data.F
+   println(i, " ", data.G′.V′[i], ", δ($i) = $(δ(data, i))")
+ end
 # println("F´: ", F´)
 # println("β: $β")
 # println("T: $T")
@@ -149,11 +149,12 @@ function build_model(data::DataGVRP)
   # Formulation
   gvrp = VrpModel()
   @variable(gvrp.formulation, x[e in E], Int)
-#  @variable(gvrp.formulation, 2 * length(C) >= y[i in F] >= 0, Int)
+  @variable(gvrp.formulation, 2 * length(C) >= y[i in F] >= 0, Int)
   @objective(gvrp.formulation, Min, sum(d(data, e) * x[e] for e in E))
   @constraint(gvrp.formulation, deg[i in C], sum(x[e] for e in δ(data, i)) == 2.0)
-#  @constraint(gvrp.formulation, hotel_deg[i in F], sum(x[e] for e in δ(data, i)) == 2*y[i])
+  @constraint(gvrp.formulation, hotel_deg[i in F], sum(x[e] for e in δ(data, i)) == 2*y[i])
   @constraint(gvrp.formulation, no_edge_between_afss[f in F], sum(x[(f, r)] for r in F if (f, r) in E) == 0.0)
+  @constraint(gvrp.formulation, y[F[1]] >= 1)
 
 #  routes = [
 #          [0,1,10,3,10,0],
@@ -296,7 +297,7 @@ end
 
   define_elementarity_sets_distance_matrix!(gvrp, G, [[d(data, ed(i, j)) for i in C] for j in C])
 
-#  set_branching_priority!(gvrp, "y", 1)
+  set_branching_priority!(gvrp, "y", 1)
   set_branching_priority!(gvrp, "x", 1)
 
    function edge_ub_callback()
@@ -344,7 +345,7 @@ end
       println(">>>>> Add min cuts : ", length(added_cuts), " cut(s) added") 
     end
   end
-#  add_cut_callback!(gvrp, maxflow_mincut_callback, "mincut")
+  add_cut_callback!(gvrp, maxflow_mincut_callback, "mincut")
 
   function maxflow_mincut_time_callback()
     # solve model
