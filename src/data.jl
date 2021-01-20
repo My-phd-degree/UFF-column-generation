@@ -85,10 +85,17 @@ contains(p, s) = findnext(s, p, 1) != nothing
 
 function readEMHInstance(app::Dict{String,Any})
     G´ = InputGraph([], [], Dict())
-    data = DataGVRP(G´, [], [], [], [], [], 0.0, 0.0, 0.0, 0.0, 0, 0.0, 0.0,0.0,0.0,0.0,0.0,[])
+    data = DataGVRP(G´, [], [], [], [], [], 0.0,0.0,0.0,0.0,0,0.0,0.0,0.0,0.0,0.0,0.0,[])
     
     #graph = Vector{Tuple{Int64,Float64,Float64}}
-    graph = [(0.0, 0.0, 0.0)]
+    #graph = [(0.0, 0.0, 0.0)]
+    #graph = [(1, 2, 7.0),  (1, 3, 9.0),  (1, 6, 14.0), (2, 3, 10.0),
+    #         (2, 4, 15.0), (3, 4, 11.0), (3, 6, 2.0),  (4, 5, 6.0),
+    #         (5, 6, 9.0)]
+
+    graph = [(1, 1, 999999999.9),  (2, 2, 999999999.9),  (3, 3, 999999999.9), (4, 4, 999999999.9),
+             (5, 5, 999999999.9), (6, 6, 999999999.9), (7, 7, 999999999.9),  (8, 8, 999999999.9),
+             (9, 9, 999999999.9)]
 
     open(app["instance"]) do f
       # Ignore header
@@ -96,7 +103,7 @@ function readEMHInstance(app::Dict{String,Any})
       # Read vertices
       i = 1
       data.max_d = data.max_f = data.max_t = 0.0
-      data.min_d = data.min_f = data.min_t = 999999999.9999
+      data.min_d = data.min_f = data.min_t = 999999999.9
       while !eof(f)
         line = readline(f)
         aux = split(line, ['\t']; limit=0, keepempty=false)
@@ -167,7 +174,7 @@ function readEMHInstance(app::Dict{String,Any})
         e = (i, j)
         if haskey(app, "preprocessings") && app["preprocessings"] != nothing
           push!(G´.E, e) # add edge e
-          cost = 999999999
+          cost = 999999999.9
           if i < j && !((i, j) in data.E´)
             data.G´.cost[e] = distance(data, e)
             data.max_d  = ( data.max_d < d(data, ed(i, j)) ) ? d(data, ed(i, j)) : data.max_d
@@ -175,44 +182,64 @@ function readEMHInstance(app::Dict{String,Any})
             data.max_t  = ( data.max_t < t(data, ed(i, j)) ) ? t(data, ed(i, j)) : data.max_t
 
             data.min_d = ( data.min_d > d(data, ed(i, j)) ) ? d(data, ed(i, j)) : data.min_d
-            data.max_f = ( data.max_f > f(data, ed(i, j)) ) ? f(data, ed(i, j)) : data.max_f
-            data.max_t = ( data.max_t > t(data, ed(i, j)) ) ? t(data, ed(i, j)) : data.max_t
-            cost = d(data, ed(i, j))
+            data.min_f = ( data.min_f > f(data, ed(i, j)) ) ? f(data, ed(i, j)) : data.min_f
+            data.min_t = ( data.min_t > t(data, ed(i, j)) ) ? t(data, ed(i, j)) : data.min_t
+            cost = convert(Float64, t(data, ed(i, j)) ) + data.G´.V´[j].service_time
+            push!(graph, (i, j, cost))
           else
-            data.G´.cost[e] = 999999999.9999
+            data.G´.cost[e] = 999999999.9
+            push!(graph, (i, j, cost))
           end
-          append!( graph, [ (i, j , cost ) ] )
+          #append!( graph, [ (i, j , cost ) ] )
         elseif i < j
             push!(G´.E, e) # add edge e
             data.G´.cost[e] = distance(data, e)
-            cost = d(data, ed(i, j))
             #cost = ceil( t(data, ed(i, j)) )
-            append!( graph, [ (i, j , cost ) ] )
+            #println(typeof( t(data, ed(i, j)) ))
+            cost = convert(Float64, t(data, ed(i, j)) ) + data.G´.V´[j].service_time
+            #println(typeof(cost))
+            
+            #cost2 = 9.0#(data, ed(i, j))
+            
+            push!(graph, (i, j, cost))
+            #append!( graph, [ (i, j , cost ) ] )
 
             data.max_d  = ( data.max_d < d(data, ed(i, j)) ) ? d(data, ed(i, j)) : data.max_d
             data.max_f  = ( data.max_f < f(data, ed(i, j)) ) ? f(data, ed(i, j)) : data.max_f
             data.max_t  = ( data.max_t < t(data, ed(i, j)) ) ? t(data, ed(i, j)) : data.max_t
 
             data.min_d = ( data.min_d > d(data, ed(i, j)) ) ? d(data, ed(i, j)) : data.min_d
-            data.max_f = ( data.max_f > f(data, ed(i, j)) ) ? f(data, ed(i, j)) : data.max_f
-            data.max_t = ( data.max_t > t(data, ed(i, j)) ) ? t(data, ed(i, j)) : data.max_t
+            data.min_f = ( data.min_f > f(data, ed(i, j)) ) ? f(data, ed(i, j)) : data.min_f
+            data.min_t = ( data.min_t > t(data, ed(i, j)) ) ? t(data, ed(i, j)) : data.min_t
         end
       end
     end
     
+    #Shortest path from a to e: a → c → d → e (cost 26)
     g = Digraph(graph)
     min_LB_E_j(data, g)
     
-    println("BFS ...")
-    println( "cost_BFS_path (1, 2): " , cost_BFS_path(data,1,2) )
-    println( "cost_BFS_path (1, 3): " , cost_BFS_path(data,1,3) )
-    println( "cost_BFS_path (1, 4): " , cost_BFS_path(data,1,4) )
+    #println("BFS ...")
+    #println( "cost_BFS_path (1, 2): " , cost_BFS_path(data,1,2) )
+    #println( "cost_BFS_path (1, 3): " , cost_BFS_path(data,1,3) )
+    #println( "cost_BFS_path (1, 4): " , cost_BFS_path(data,1,4) )
     
+    """
+    C´ = Array{Int64}
+    C´ = []
+    push!(C´, 1 )
+    for j in data.C
+      push!(C´, j )
+    end
+    for j in C´
+    push!( data.LB_E, 0.0 )
+    end
+    """
 
     println("DijkstraPath ...")
-    src, dst = 1, 2
-    #path, cost = dijkstrapath(g, src, dst)
-    #println("Shortest path from $src to $dst: ", isempty(path) ? "no possible path" : join(path, " → "), " (cost $cost)")
+    src, dst = 4, 9
+    path, cost = dijkstrapath(g, src, dst)
+    println("Shortest path from $src to $dst: ", isempty(path) ? "no possible path" : join(path, " → "), " (cost $cost)")
 
     print_matrix(data, "time_cost")
     #print_matrix(data, "fuel_cost")
@@ -315,11 +342,11 @@ function readMatheusInstance(app::Dict{String,Any})
     return data
 end
 
-#&& !((e[1], e[2]) in data.E´) 
+#&& !((e[1], e[2]) in data.E´)
 edges(data::DataGVRP) = data.G´.E # return set of arcs
-d(data,e) = (e[1] != e[2] && !((e[1], e[2]) in data.E´) ) ? data.G´.cost[e] : 999999999.9999 # cost of the edge e
-f(data,e) = (e[1] != e[2] && !((e[1], e[2]) in data.E´) ) ? d(data, e) * data.ρ : 999999999.9999 # fuel of the arc a 
-t(data,e) = (e[1] != e[2] && !((e[1], e[2]) in data.E´) ) ? d(data, e) / data.ε : 999999999.9999 # time of the arc a 
+d(data,e) = (e[1] != e[2] && !((e[1], e[2]) in data.E´) ) ? data.G´.cost[e] : 999999999.9 # cost of the edge e
+f(data,e) = (e[1] != e[2] && !((e[1], e[2]) in data.E´) ) ? d(data, e) * data.ρ : 999999999.9 # fuel of the arc a 
+t(data,e) = (e[1] != e[2] && !((e[1], e[2]) in data.E´) ) ? d(data, e) / data.ε : 999999999.9 # time of the arc a 
 dimension(data::DataGVRP) = length(data.G´.V´) # return number of vertices
 nb_vertices(data::DataGVRP) = length(vertices(data))
 
@@ -467,15 +494,20 @@ end
 function cost_BFS_path(data::DataGVRP, ii::Integer, jj::Integer)
   
   #(i -> j)
+  if ii == jj
+    return 0
+  end
 
+  """
   time_cost = t( data, ed( ii, jj ) )
   if time_cost <= data.T && f( data, ed( ii, jj ) ) <= data.β
     return time_cost
-  else
-    println("##############################") 
-    return 99999999 
+  elseif ii == jj 
+    return 0 
   end
+  """
 
+  println(ii, " - ", jj)
   n = nb_vertices(data)
   V = data.F#[i for i in 1:n]
   E = edges(data)
@@ -547,15 +579,15 @@ function cost_BFS_path(data::DataGVRP, ii::Integer, jj::Integer)
         """
         #"""
         # viável em tempo && combustível
-        if i != j && !((i, j) in data.E´) && ( time_cost < data.T && f( data, ed( i, j ) ) < data.β) #|| ( f( data, ed( i, j ) ) > residual_fuel_cost ) ) && !visited[j]
+        if i != j && !((i, j) in data.E´) && ( time_cost < data.T && f( data, ed( i, j ) ) < data.β) || ( f( data, ed( i, j ) ) > residual_fuel_cost ) && !visited[j]
           visited[j] = true
           push!(q, j)
           push!(comp, j)
           time_cost += t( data, ed( i, j ) ) + data.G´.V´[j].service_time
-          #if i in data.F residual_fuel_cost = data.β end
-          #residual_fuel_cost  = residual_fuel_cost - f( data, ed( i, j ) )
-          #total_fuel_cost     += f( data, ed( i, j ) ) + residual_fuel_cost
-          #total_distance_cost += data.G´.cost[ed(i, j)]
+          if i in data.F residual_fuel_cost = data.β end
+          residual_fuel_cost  = residual_fuel_cost - f( data, ed( i, j ) )
+          total_fuel_cost     += f( data, ed( i, j ) ) + residual_fuel_cost
+          total_distance_cost += data.G´.cost[ed(i, j)]
         end
         #"""
       end
@@ -588,8 +620,8 @@ function min_LB_E_j(data::DataGVRP, g)
   push!(e_jr,0) 
   push!(e_jr,0)
 
-  min_cost_e_jf1 = 999999999.9999
-  min_cost_e_jr1 = 999999999.9999
+  min_cost_e_jf1 = 999999999
+  min_cost_e_jr1 = 999999999
   # se vc se refere ao  t_{f}^{'} da tese, eles são calculados pelo 
   # caminho minimo de f ao deposito no grafo induzido de AFSs com arestas de peso <= beta
   
@@ -598,23 +630,33 @@ function min_LB_E_j(data::DataGVRP, g)
   for j in C´
     for _f in data.F
       for _r in data.F
-        if _f < _r && ( _f!=1 && _r!=1 ) && !(( _f, _r ) in data.E´)
+        #if _f < _r && ( _f!=1 && _r!=1 ) && !(( _f, _r ) in data.E´)
+        if _f < _r && !(( _f, _r ) in data.E´)
+        #if !(( _f, _r ) in data.E´)
           t_f = t_r = 0
           jj = 1
-          """
-          src, dst = _f, jj
-          path, cost = dijkstrapath(g, src, dst)
-          # minimum cost path _f -> jj
-          t_f = 0.0#dijsktra(data, jj, _f)
-          
-          src, dst = _r, jj
-          path, cost = dijkstrapath(g, src, dst)
-          # minimum cost path _r -> jj
-          t_r = 0.0#dijsktra(data, jj, _r)
-          """
 
-          t_f = cost_BFS_path(data, _f, jj)
-          t_r = cost_BFS_path(data, _r, jj)
+          src, dst = 1, _f
+          path, cost_t = dijkstrapath(g, src, dst)
+          #println("\n",isempty(path) ? "no possible path" : join(path, " → ")," len: ",length(path))
+          #!( cost_t <= data.T && length(path)<1 )
+          t_f = !( cost_t <= data.T) ? 999999999 : cost_t
+          cost_fuel = (cost_t * data.ε * data.ρ ) / length(path)
+          if t_f != 999999999
+            t_f = !( cost_fuel <= data.β) ? 999999999 : cost_t 
+            #t_f = cost_BFS_path(data, _f, jj)
+          end
+
+          src, dst = 1, _r
+          path, cost_t = dijkstrapath(g, src, dst)
+          #println("\n",isempty(path) ? "no possible path" : join(path, " → ")," len: ",length(path),"\n")
+          #!( cost_t <= data.T && length(path)<1 )
+          t_r = !( cost_t <= data.T) ? 999999999 : cost_t
+          cost_fuel = ( cost_t * data.ε * data.ρ ) / length(path)
+          if t_r != 999999999
+            t_r = !( cost_fuel <= data.β) ? 999999999 : cost_t
+            #t_r = cost_BFS_path(data, _r, jj)
+          end
 
           if t_f + t( data, ed( _f, j ) ) + t( data, ed( j, _r ) ) + t_r <= data.T && f( data, ed( _f, j ) ) + f( data, ed( j, _r ) ) <= data.β
             if min_cost_e_jf1 > t_f
@@ -630,9 +672,9 @@ function min_LB_E_j(data::DataGVRP, g)
       end
     end
     #push!( data.LB_E, 0.0 )
-    #push!( data.LB_E, 9.9 )
-    #push!( data.LB_E, min( f( data, ed( e_jf[1], e_jf[2] ) ) , f( data, ed( e_jr[1], e_jr[2] ) ) ) )
-    push!( data.LB_E, min( min_cost_e_jf1 , min_cost_e_jr1 ) )
+    #push!( data.LB_E, data.min_f )
+    push!( data.LB_E, min( f( data, ed( e_jf[1], e_jf[2] ) ) , f( data, ed( e_jr[1], e_jr[2] ) ) ) )
+    #push!( data.LB_E, min( min_cost_e_jf1 , min_cost_e_jr1 ) )
   end
   println(RED_FG, data.LB_E)
   stack = CrayonStack()
@@ -667,33 +709,30 @@ struct Digraph{T <: Real,U}
     edges::Dict{Tuple{U,U},T}
     verts::Set{U}
 end
-
+ 
 function Digraph(edges::Vector{Tuple{U,U,T}}) where {T <: Real,U}
-    adjmat = Dict((edge[1], edge[2]) => edge[3] for edge in edges)
     vnames = Set{U}(v for edge in edges for v in edge[1:2])
+    adjmat = Dict((edge[1], edge[2]) => edge[3] for edge in edges)
     return Digraph(adjmat, vnames)
 end
-
-verticesD(g::Digraph) = g.verts
-edgesD(g::Digraph)    = g.edges
-
-neighbours(g::Digraph, v) = Set((b, c) for ((a, b), c) in edgesD(g) if a == v)
-
+ 
+vertices(g::Digraph) = g.verts
+edges(g::Digraph)    = g.edges
+ 
+neighbours(g::Digraph, v) = Set((b, c) for ((a, b), c) in edges(g) if a == v)
+ 
 function dijkstrapath(g::Digraph{T,U}, source::U, dest::U) where {T, U}
-    #@assert source ∈ verticesD(g) "$source is not a vertex in the graph"
+    @assert source ∈ vertices(g) "$source is not a vertex in the graph"
  
     # Easy case
-    println(source,dest)
-    if source == dest 
-      return [source], 0 
-    end
+    if source == dest return [source], 0 end
     # Initialize variables
     inf  = typemax(T)
-    dist = Dict(v => inf for v in verticesD(g))
-    prev = Dict(v => v   for v in verticesD(g))
+    dist = Dict(v => inf for v in vertices(g))
+    prev = Dict(v => v   for v in vertices(g))
     dist[source] = 0
-    Q = copy(verticesD(g))
-    neigh = Dict(v => neighbours(g, v) for v in verticesD(g))
+    Q = copy(vertices(g))
+    neigh = Dict(v => neighbours(g, v) for v in vertices(g))
  
     # Main loop
     while !isempty(Q)

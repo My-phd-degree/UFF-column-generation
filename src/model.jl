@@ -32,7 +32,7 @@ function build_model(data::DataGVRP)
 
     println("----------------------------------------")
     println("AFs:")
-    for f in F´ 
+    for f in F´
         for k in K
             #FM[f][k] = 1
         end
