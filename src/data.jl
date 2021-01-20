@@ -54,7 +54,7 @@ function distance(data::DataGVRP, e::Tuple{Int64,Int64})
   vertices = data.G´.V´
   flag = 1
   # array <vertices> is indexed from 1 (depot is vertices[1], customer 1 is vertices[2], and so on)
-  return (flag == 1) ? GEO_dist(vertices[u], vertices[v]) : EUC_dist(vertices[u], vertices[v])  
+  return (flag == 1) ? EUC_dist(vertices[u], vertices[v]) : GEO_dist(vertices[u], vertices[v])   
 end
 
 # GEO distance
@@ -76,9 +76,9 @@ end
 function EUC_dist(u::Vertex, v::Vertex)
     x_sq = (v.pos_x - u.pos_x)^2
     y_sq = (v.pos_y - u.pos_y)^2
-    #return floor(sqrt(x_sq + y_sq) + 0.5)
+    return floor(sqrt(x_sq + y_sq) + 0.5)
     #return ceil(sqrt(x_sq + y_sq) + 0.5)
-    return sqrt(x_sq + y_sq) + 0.5
+    #return sqrt(x_sq + y_sq) + 0.5
 end
 
 contains(p, s) = findnext(s, p, 1) != nothing
@@ -251,8 +251,15 @@ end
 function readMatheusInstance(app::Dict{String,Any})
     G´ = InputGraph([], [], Dict())
     data = DataGVRP(G´, [], [], [], [], [], 0.0, 0.0, 0.0, 0.0, 0, 0.0, 0.0,0.0,0.0,0.0,0.0,[])
+    
+    graph = [(1, 1, 999999999.9),  (2, 2, 999999999.9),  (3, 3, 999999999.9), (4, 4, 999999999.9),
+             (5, 5, 999999999.9), (6, 6, 999999999.9), (7, 7, 999999999.9),  (8, 8, 999999999.9),
+             (9, 9, 999999999.9)]
+
     sepChar = ';'
     open(app["instance"]) do f
+      data.max_d = data.max_f = data.max_t = 0.0
+      data.min_d = data.min_f = data.min_t = 999999999.9
       # vehicle data
       # ignore header
       readline(f)
@@ -326,6 +333,8 @@ function readMatheusInstance(app::Dict{String,Any})
       end
     end
 
+    """
+    original read
     for i in vertices(data)
       for j in vertices(data) # add arcs between vertices
         e = (i, j)
@@ -338,7 +347,83 @@ function readMatheusInstance(app::Dict{String,Any})
         end
       end
     end
+    """
 
+        for i in vertices(data)
+      for j in vertices(data) # add arcs between vertices
+        e = (i, j)
+        if haskey(app, "preprocessings") && app["preprocessings"] != nothing
+          push!(G´.E, e) # add edge e
+          cost = 999999999.9
+          if i < j && !((i, j) in data.E´)
+            data.G´.cost[e] = distance(data, e)
+            data.max_d  = ( data.max_d < d(data, ed(i, j)) ) ? d(data, ed(i, j)) : data.max_d
+            data.max_f  = ( data.max_f < f(data, ed(i, j)) ) ? f(data, ed(i, j)) : data.max_f
+            data.max_t  = ( data.max_t < t(data, ed(i, j)) ) ? t(data, ed(i, j)) : data.max_t
+
+            data.min_d = ( data.min_d > d(data, ed(i, j)) ) ? d(data, ed(i, j)) : data.min_d
+            data.min_f = ( data.min_f > f(data, ed(i, j)) ) ? f(data, ed(i, j)) : data.min_f
+            data.min_t = ( data.min_t > t(data, ed(i, j)) ) ? t(data, ed(i, j)) : data.min_t
+            cost = convert(Float64, t(data, ed(i, j)) ) + data.G´.V´[j].service_time
+            push!(graph, (i, j, cost))
+          else
+            data.G´.cost[e] = 999999999.9
+            push!(graph, (i, j, cost))
+          end
+          #append!( graph, [ (i, j , cost ) ] )
+        elseif i < j
+            push!(G´.E, e) # add edge e
+            data.G´.cost[e] = distance(data, e)
+            #cost = ceil( t(data, ed(i, j)) )
+            #println(typeof( t(data, ed(i, j)) ))
+            cost = convert(Float64, t(data, ed(i, j)) ) + data.G´.V´[j].service_time
+            #println(typeof(cost))
+            
+            #cost2 = 9.0#(data, ed(i, j))
+            
+            push!(graph, (i, j, cost))
+            #append!( graph, [ (i, j , cost ) ] )
+
+            data.max_d  = ( data.max_d < d(data, ed(i, j)) ) ? d(data, ed(i, j)) : data.max_d
+            data.max_f  = ( data.max_f < f(data, ed(i, j)) ) ? f(data, ed(i, j)) : data.max_f
+            data.max_t  = ( data.max_t < t(data, ed(i, j)) ) ? t(data, ed(i, j)) : data.max_t
+
+            data.min_d = ( data.min_d > d(data, ed(i, j)) ) ? d(data, ed(i, j)) : data.min_d
+            data.min_f = ( data.min_f > f(data, ed(i, j)) ) ? f(data, ed(i, j)) : data.min_f
+            data.min_t = ( data.min_t > t(data, ed(i, j)) ) ? t(data, ed(i, j)) : data.min_t
+        end
+      end
+    end
+    
+    #Shortest path from a to e: a → c → d → e (cost 26)
+    g = Digraph(graph)
+    min_LB_E_j(data, g)
+    
+    #println("BFS ...")
+    #println( "cost_BFS_path (1, 2): " , cost_BFS_path(data,1,2) )
+    #println( "cost_BFS_path (1, 3): " , cost_BFS_path(data,1,3) )
+    #println( "cost_BFS_path (1, 4): " , cost_BFS_path(data,1,4) )
+    
+    """
+    C´ = Array{Int64}
+    C´ = []
+    push!(C´, 1 )
+    for j in data.C
+      push!(C´, j )
+    end
+    for j in C´
+    push!( data.LB_E, 0.0 )
+    end
+    """
+
+    println("DijkstraPath ...")
+    src, dst = 4, 9
+    path, cost = dijkstrapath(g, src, dst)
+    println("Shortest path from $src to $dst: ", isempty(path) ? "no possible path" : join(path, " → "), " (cost $cost)")
+
+    print_matrix(data, "time_cost")
+    #print_matrix(data, "fuel_cost")
+    #print_matrix(data, "distance_cost")
     return data
 end
 
