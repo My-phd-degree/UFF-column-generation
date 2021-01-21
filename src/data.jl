@@ -427,6 +427,88 @@ function readMatheusInstance(app::Dict{String,Any})
     return data
 end
 
+function read_Andelmin_Bartolini_Instance(app::Dict{String,Any})
+    G′ = InputGraph([], [], Dict())
+    data = DataGVRP(G′, 1, [], [], 0.0, 0.0, 0.0, 0.0)
+    sepChar = ' '
+    open(app["instance"]) do f
+      # Ignore header and get paper default values
+      readline(f)
+      Customers     = 50
+      Stations      = 22
+      MaxTime       = 660
+      MaxDistance   = 300
+      Speed         = 0.66666667
+      ServiceTime   = 30
+      RefuelTime    = 15
+      i = 1
+      while !eof(f)
+        # Read vertices
+        line = readline(f)
+        aux = split(line, [' ']; limit=0, keepempty=false)
+        if length(aux) == 0
+          break
+        end
+        
+        v = Vertex(i, 0.0, 0.0, 0.0)
+        v.pos_x = parse(Float64, aux[3])
+        v.pos_y = parse(Float64, aux[4])
+        push!(G′.V′, v)
+        if aux[2] == "d"
+          v.service_time = 0
+        elseif aux[2] == "f"
+          # Get AFS
+          v.service_time = aux[2] == "f" ? RefuelTime : 0
+          push!(data.F, v.id_vertex)
+        elseif aux[2] == "c"
+          # Get customer
+          v.service_time = ServiceTime
+          push!(data.C, v.id_vertex)
+        end
+        i += 1
+      end
+      # Read params
+      
+      #Vehicle capacity
+      data.β = 60
+      # Get vehicle fuel consumptin rate
+      data.ρ = 0.2
+      # Get vehicle time limit
+      data.T = MaxTime
+      # Get vehicle average speed
+      data.ε = Speed
+
+      line = readline(f)#
+      #line = readline(f)#Infeasible customers 
+    end
+
+    #read preprocessings
+    invalidEdges = []
+    if haskey(app, "preprocessings") && app["preprocessings"] != nothing
+      open(app["preprocessings"]) do f
+        while !eof(f)
+          # read edge
+          line = readline(f)
+          edge = split(line, [' ', ',']; limit=0, keepempty=false)
+          push!(invalidEdges, (parse(Int, edge[1]) + 1, parse(Int, edge[2]) + 1))
+        end
+      end
+    end
+
+    # create edges
+    for i in vertices(data)
+      for j in vertices(data) # add arcs between vertices
+        if i < j && !((i, j) in invalidEdges)
+          e = (i, j)
+          push!(G′.E, e) # add edge e
+          data.G′.cost[e] = distance(data, e)
+        end
+      end
+    end
+
+    return data
+end
+
 #&& !((e[1], e[2]) in data.E´)
 edges(data::DataGVRP) = data.G´.E # return set of arcs
 d(data,e) = (e[1] != e[2] && !((e[1], e[2]) in data.E´) ) ? data.G´.cost[e] : 999999999.9 # cost of the edge e
