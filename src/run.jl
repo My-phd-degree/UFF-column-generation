@@ -56,8 +56,10 @@ function run_gvrp(app::Dict{String,Any})
   instance_name = split(basename(app["instance"]), ".")[1] 
   if app["instance_type"] == "Matheus"
     data = readMatheusInstance(app)
-  else
+  elseif app["instance_type"] == "EMH"
     data = readEMHInstance(app)
+  elseif app["instance_type"] == "Andelmin-Bartolini"
+    data = read_Andelmin_Bartolini_Instance(app)
   end
 
   if app["sol"] != nothing
