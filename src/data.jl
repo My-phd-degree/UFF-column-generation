@@ -866,8 +866,17 @@ end
 # return incident edges of i
 function δ(data::DataGVRP, i::Integer)
     incident_edges = Vector{Tuple}()
-    for j in 1:i - 1 push!(incident_edges, (j, i)) end
-    for j in i + 1:(length(data.G´.V´)) push!(incident_edges, (i, j)) end
+    for j in 1:i - 1 
+      if !( (j,i) in data.E´ )
+        push!(incident_edges, (j, i)) 
+      end
+    end
+
+    for j in i + 1:(length(data.G´.V´)) 
+      if !( (i,j) in data.E´ )
+        push!(incident_edges, (i, j)) 
+      end
+    end
     return incident_edges
 end
 

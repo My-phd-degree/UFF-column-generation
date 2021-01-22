@@ -1,3 +1,5 @@
+using CPLEX
+
 function build_model(data::DataGVRP)
     
     # os primeiros F vertices são vertices de abastecimento 
@@ -47,6 +49,7 @@ function build_model(data::DataGVRP)
 
     @variable(gvrp.formulation, 0 <= x[i in V, j in V, k in M] <= 1, Int)
     @variable(gvrp.formulation, 0 <= e[i in C] <= data.β)
+    @variable(gvrp.formulation, 2 * length(C) >= y[i in F, k in M] >= 0, Int)
     #@variable(gvrp.formulation, data.min_d <= LB_E[j in C] <= data.max_d)
 
     @objective(gvrp.formulation, Min, sum( data.G´.cost[ed(i, j)] * x[i,j,k] for i in V, j in V, k in M if i != j && !((i, j) in data.E´)  ) )
@@ -70,17 +73,19 @@ function build_model(data::DataGVRP)
                   #deg_6_8_1[i in C], get_LB_E(data, i) <= e[i]
                   #deg_6_8_2[i in C],  e[i] <= data.β - get_LB_E(data, i)
 
-                  #deg_6_8_1[i in C], data.min_f <= e[i]
-                  #deg_6_8_2[i in C],  e[i] <= data.β - data.min_f
+                  deg_6_8_1[i in C], data.min_f <= e[i]
+                  deg_6_8_2[i in C],  e[i] <= data.β - data.min_f
 
-                  deg_6_8_1[i in C], 0.0 <= e[i]
-                  deg_6_8_2[i in C],  e[i] <= data.β - 0.0
+                  #deg_6_8_1[i in C], 0.0 <= e[i]
+                  #deg_6_8_2[i in C],  e[i] <= data.β - 0.0
 
                   deg_6_9[k in M], sum(x[i, j, k] * (t(data, ed(i, j)) + data.G´.V´[i].service_time) for i in V, j in V if (i!=j && !((i, j) in data.E´) ) ) <= T
 
                   #prepro[e in L, k in M], x[e[1], e[2], k] == 0
                 end)
-    
+    #@constraint(gvrp.formulation, hotel_deg[i in F, k in M], sum(x[e[1], e[2], k] for e in δ(data, i) ) == 2*y[i,k])
+    #@constraint(gvrp.formulation, hotel_min[k in M], y[ F[1] , k ] >= 1)
+
     #println(gvrp.formulation)
 
     # Build the model directed graph G=(V,A)
@@ -348,53 +353,88 @@ function build_model(data::DataGVRP)
     end
 
     set_branching_priority!(gvrp, "x", 1)
-    # "Solution not found" p/ prioridade de branch na var e
+    # "Solution not found" p/ prioridade maior de branch na var e
     set_branching_priority!(gvrp, "e", 1)
+    set_branching_priority!(gvrp, "y", 1)
+
+    function edge_ub_callback()
+        for k in K
+            for (i,j) in E
+                if !( (i, j) in data.E´) && i < j
+                    e = (i,j)
+                     if i in C && j in C && get_value(gvrp.optimizer, x[i,j,k]) > 1.001
+                        println("Adding edge ub cut for e = ", e)
+                        add_dynamic_constr!(gvrp.optimizer, [x[i,j,k]], [1.0], <=, 1.0, "edge_ub")
+                     end
+                end
+            end
+        end
+    end
 
     function time_callback()
-        # solve secondary model
-        M = Model(solver = CplexSolver(                                      
-                                       CPX_PARAM_MIPDISPLAY=0,
-                                       CPX_PARAM_SCRIND=0
-                                      ))
-        @variable(M, 0 <= y[1:n] <= 1, Int)
-        @variable(M, 0 <= w[e in E] <= 1, Int)
-        @variable(M, 0 <= z[e in E] <= 1, Int)
-        x´ = Dict{Tuple{Int64,Int64},Float64}(e => get_value(gvrp.optimizer, x[e]) for e in E)
-        @objective(M, Max, (2/T) * sum(z[e] * x´[e] * t(data, e) for e in E) - sum(w[e] * x´[e] for e in E))
-        @constraint(M, update_z_1[e in E], z[e] >= y[e[1]])
-        @constraint(M, update_z_2[e in E], z[e] >= y[e[2]])
-        @constraint(M, update_z_3[(i, j) in E], y[i] + y[j] >= z[(i, j)])
-        @constraint(M, update_w_1[(i, j) in E], w[(i, j)] >= y[i] - y[j])
-        @constraint(M, update_w_2[(i, j) in E], w[(i, j)] >= y[j] - y[i])
-        @constraint(M, update_w_3[(i, j) in E], 2 - (y[i] + y[j]) >= w[(i, j)])
-        @constraint(M, update_w_4[(i, j) in E], y[i] + y[j] >= w[(i, j)])
-        @constraint(M, y[F[1]] == 0 )
-        @constraint(M, sum(y[i] for i in C) >= 1)
-        solve(M)
-        # valid set
-        if getobjectivevalue(M) > 0.001
-          y´ = getvalue(y)
-          w´ = getvalue(w)
-          z´ = getvalue(z)
-          # get bipartition
-          setIn, setOut = [], []
-          [y´[i] > 0.5 ? push!(setIn, i) : push!(setOut, i) for i in 1:n]
+        
+        for k in K
+            # solve secondary model
+            E_k = []
+            for i in V
+                for j in V
+                    if !( (i, j) in data.E´) && i < j
+                        #val = get_value(optimizer, x[i, j, k])
+                        value::Float64 = get_value( gvrp.optimizer, x[ i, j, k ] )
+                        if value > 0.5
+                            push!( E_k , (i , j) )
+                        end
+                    end
+                end
+            end
 
-            #println(y´)
-            #println(w´)
-            #println(z´)
-            println("S: ", setIn)
-            println("V\\S: ", setOut)
-            #println([x[e] for e in E if w´[e] > 0.5])
-            #println()
-            #println([x[e] for e in E if z´[e] > 0.5])
+            M = Model(solver = CplexSolver(                                      
+                                           CPX_PARAM_MIPDISPLAY=0,
+                                           CPX_PARAM_SCRIND=0
+                                          ))
+            @variable(M, 0 <= y[1:n] <= 1, Int)
+            @variable(M, 0 <= w[e in E_k] <= 1, Int)
+            @variable(M, 0 <= z[e in E_k] <= 1, Int)
 
-          lhs_vars = vcat([x[e] for e in E if w´[e] > 0.5], [x[e] for e in E if z´[e] > 0.5])
-          lhs_coeff = vcat([1.0 for e in E if w´[e] > 0.5], [- t(data, e) * 2/T for e in E if z´[e] > 0.5])
+            x´ = Dict{Tuple{Int64,Int64},Float64}(e => get_value(gvrp.optimizer, x[ e[1] , e[2] , k  ]) for e in E_k )
+            #x´ = Dict{Tuple{Int64,Int64},Float64}(e => get_value(gvrp.optimizer, x[k, e[1], e[2] ]) for e in E )
+            #x´ = Dict{Tuple{Int64,Int64},Float64}(e => get_value(gvrp.optimizer, x[k, e[1], e[2] ]) for e in (1,2) )
+            
+            @objective(M, Max, (2.0/data.T) * sum( z[e] * x´[e] * t( data, ed(e[1],e[2]) ) for e in E_k) - sum(w[e] * x´[e] for e in E_k))
+            @constraint(M, update_z_1[e in E_k], z[e] >= y[e[1]] )
+            @constraint(M, update_z_2[e in E_k], z[e] >= y[e[2]])
+            @constraint(M, update_z_3[(i, j) in E_k], y[i] + y[j] >= z[(i, j)])
+            @constraint(M, update_w_1[(i, j) in E_k], w[(i, j)] >= y[i] - y[j])
+            @constraint(M, update_w_2[(i, j) in E_k], w[(i, j)] >= y[j] - y[i])
+            @constraint(M, update_w_3[(i, j) in E_k], 2 - (y[i] + y[j]) >= w[(i, j)])
+            @constraint(M, update_w_4[(i, j) in E_k], y[i] + y[j] >= w[(i, j)])
+            @constraint(M, y[F[1]] == 0 )
+            @constraint(M, sum(y[i] for i in C) >= 1)
+            solve(M)
+            # valid set
+            if getobjectivevalue(M) > 0.001
+              y´ = getvalue(y)
+              w´ = getvalue(w)
+              z´ = getvalue(z)
+              # get bipartition
+              setIn, setOut = [], []
+              [y´[i] > 0.5 ? push!(setIn, i) : push!(setOut, i) for i in 1:n]
 
-          add_dynamic_constr!(gvrp.optimizer, lhs_vars, lhs_coeff, >=, 0.0, "mincuttime")
-          println(">>>>> Add min cuts time: ", 1, " cut(s) added") 
+                #println(y´)
+                #println(w´)
+                #println(z´)
+                println("S: ", setIn)
+                println("V\\S: ", setOut)
+                #println([x[e] for e in E if w´[e] > 0.5])
+                #println()
+                #println([x[e] for e in E if z´[e] > 0.5])
+
+              lhs_vars  = vcat([x[e[1],e[2],k] for e in E_k if w´[e] > 0.5], [x[e[1],e[2],k] for e in E_k if z´[e] > 0.5])
+              lhs_coeff = vcat([1.0 for e in E_k if w´[e] > 0.5], [- t( data, ed(e[1],e[2]) ) * 2.0/data.T for e in E_k if z´[e] > 0.5])
+
+              add_dynamic_constr!(gvrp.optimizer, lhs_vars, lhs_coeff, >=, 0.0, "timeCut")
+              println(">>>>> Add min cuts time: ", 1, " cut(s) added") 
+            end
         end
     end
 
@@ -499,6 +539,7 @@ function build_model(data::DataGVRP)
         # to test
     end
 
+    add_cut_callback!(gvrp, edge_ub_callback, "edge_ub")
     add_cut_callback!(gvrp, maxflow_callback, "maxFlow")
     add_cut_callback!(gvrp, mincut_callback, "minCut")
     #add_cut_callback!(gvrp, time_callback, "timeCut")
