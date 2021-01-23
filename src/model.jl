@@ -29,8 +29,8 @@ function build_model(data::DataGVRP)
     end
     println("----------------------------------------")
     println("min_d: ", data.min_d, " - " , "max_d: ", data.max_d)
-    println("min_f: ", data.min_f, " - " , "max_f: ", data.max_f)
-    println("min_t: ", data.min_t, " - " , "max_t: ", data.max_t)
+    println("min_f: ", data.min_f, " - " , "max_f: ", data.max_f, "\tdata.β: ", data.β)
+    println("min_t: ", data.min_t, " - " , "max_t: ", data.max_t, "\tdata.T: ", data.T)
 
     println("----------------------------------------")
     println("AFs:")
@@ -70,11 +70,11 @@ function build_model(data::DataGVRP)
                   #deg_6_8_00[j in C], data.LB_E[j] <= data.max_d
                   #deg_6_8_01[j in C], data.LB_E[j] >= data.min_d
                   
-                  #deg_6_8_1[i in C], get_LB_E(data, i) <= e[i]
-                  #deg_6_8_2[i in C],  e[i] <= data.β - get_LB_E(data, i)
+                  deg_6_8_1[i in C], get_LB_E(data, i) <= e[i]
+                  deg_6_8_2[i in C],  e[i] <= data.β - get_LB_E(data, i)
 
-                  deg_6_8_1[i in C], data.min_f <= e[i]
-                  deg_6_8_2[i in C],  e[i] <= data.β - data.min_f
+                  #deg_6_8_1[i in C], data.min_f <= e[i]
+                  #deg_6_8_2[i in C],  e[i] <= data.β - data.min_f
 
                   #deg_6_8_1[i in C], 0.0 <= e[i]
                   #deg_6_8_2[i in C],  e[i] <= data.β - 0.0
@@ -311,15 +311,113 @@ function build_model(data::DataGVRP)
         return G
     end
 
+    function build_graph3()
+        v_source = v_sink = 1
+        L = 0 
+        U = length(C)
+        #L , U = 0 , length(F´)
+
+        V_ = deepcopy(V)#V´
+
+        #AFSs vertex split
+        new_id = length(V_) + 1
+        afssIn = Dict{Int, Int}()
+        afssOut = Dict{Int, Int}()
+        for f in F´
+          push!(V_, new_id)
+          afssIn[f] = new_id
+          push!(V_, new_id + 1)
+          afssOut[f] = new_id + 1
+          new_id = new_id + 2
+        end
+
+        # node ids of G from 0 to |V|
+        G = VrpGraph(gvrp, V_, v_source, v_sink, (L, U))
+
+        # resourves, R = R_M = {1,2} = {cap_res_id, fuel_res_id}}
+        
+        l_i_time, u_i_time = 0.0, T
+        time_res_id = add_resource!(G, main=true)
+        l_i_fuel, u_i_fuel = 0.0, β
+        fuel_res_id = add_resource!(G, main=true)
+
+        for i in V_
+          if i in F´ #F´
+            set_resource_bounds!(G, afssIn[i], fuel_res_id, l_i_fuel, u_i_fuel)
+            set_resource_bounds!(G, afssIn[i], time_res_id, l_i_time, u_i_time)
+            set_resource_bounds!(G, afssOut[i], fuel_res_id, l_i_fuel, u_i_fuel)
+            set_resource_bounds!(G, afssOut[i], time_res_id, l_i_time, u_i_time)
+          else
+            set_resource_bounds!(G, i, fuel_res_id, l_i_fuel, u_i_fuel)
+            set_resource_bounds!(G, i, time_res_id, l_i_time, u_i_time)
+          end
+        end
+        
+        log_k = true
+
+        if log_k == true
+            println("MAPEANDO EM K ROTAS - EM TESTE")
+
+            for k in K
+                for i in V
+                    for j in V
+                        if !((i, j) in data.E´) && i != j 
+                            if i in F´ && j in F´
+                                 continue
+                            end
+                            # add arcs i - > j
+                            arc_id = nothing
+                            if j in F´
+                            arc_id = add_arc!(G, i, afssIn[j])
+                            elseif i in F´
+                            arc_id = add_arc!(G, afssOut[i], j)
+                            else
+                            arc_id = add_arc!(G, i, j)
+                            end
+                            add_arc_var_mapping!(G, arc_id, x[i, j , k])
+                            set_arc_consumption!(G, arc_id, fuel_res_id, f(data,ed(i,j) ) )
+                            #set_arc_consumption!(G, arc_id, time_res_id, t(data,ed(i,j) ) )
+                            set_arc_consumption!(G, arc_id, time_res_id, ((data.G´.V´[i].service_time + data.G´.V´[j].service_time)/2) + t(data,ed(i,j)))
+                            # add arcs j - > i
+                            arc_id = nothing
+                            if j in F´
+                            arc_id = add_arc!(G, afssOut[j], i)
+                            elseif i in F´
+                            arc_id = add_arc!(G, j, afssIn[i])
+                            else
+                            arc_id = add_arc!(G, j, i)
+                            end
+                            add_arc_var_mapping!(G, arc_id, x[i, j , k])
+                            set_arc_consumption!(G, arc_id, fuel_res_id, f(data,ed(i,j) ) )
+                            #set_arc_consumption!(G, arc_id, time_res_id, t(data,ed(i,j) ) )
+                            set_arc_consumption!(G, arc_id, time_res_id, ((data.G´.V´[i].service_time + data.G´.V´[j].service_time)/2) + t(data,ed(i,j)))
+                        end
+                    end
+                end
+            end
+            for f in F´
+                arc_id = add_arc!(G, afssIn[f], afssOut[f])
+                set_arc_consumption!(G, arc_id, fuel_res_id, - β)
+                set_arc_consumption!(G, arc_id, time_res_id, 0.0)
+            end
+        end
+
+        return G
+    end
+
     flag = 1
     if flag == 1
-        G = build_graph()
+        G = build_graph3()
         add_graph!(gvrp, G)
 
-        set_vertex_packing_sets!(gvrp, [[(G, i)] for i in C])
-        set_additional_vertex_elementarity_sets!(gvrp, [(G,[f]) for f in data.F])
-        define_elementarity_sets_distance_matrix!(gvrp, G, [ [ d(data,ed(i, j) ) for i in V] for j in V])
+        #set_vertex_packing_sets!(gvrp, [[(G, i)] for i in C])
+        #set_additional_vertex_elementarity_sets!(gvrp, [(G,[f]) for f in data.F])
+        #define_elementarity_sets_distance_matrix!(gvrp, G, [ [ d(data,ed(i, j) ) for i in V] for j in V])
+        #add_capacity_cut_separator!(gvrp, [ ([(G, i)], 2.0*ceil(data.G´.V´[i].service_time) ) for i in C], 2.0*ceil(data.T) )
 
+        set_vertex_packing_sets!(gvrp, [[(G, i)] for i in C])
+        #set_additional_vertex_elementarity_sets!(gvrp, [(G,[f]) for f in data.F])
+        define_elementarity_sets_distance_matrix!(gvrp, G, [ [ d(data,ed(i, j) ) for i in C] for j in C])
         add_capacity_cut_separator!(gvrp, [ ([(G, i)], 2.0*ceil(data.G´.V´[i].service_time) ) for i in C], 2.0*ceil(data.T) )
 
         # 5.64 ,  com capacity_cut
@@ -355,7 +453,7 @@ function build_model(data::DataGVRP)
     set_branching_priority!(gvrp, "x", 1)
     # "Solution not found" p/ prioridade maior de branch na var e
     set_branching_priority!(gvrp, "e", 1)
-    set_branching_priority!(gvrp, "y", 1)
+    #set_branching_priority!(gvrp, "y", 1)
 
     function edge_ub_callback()
         for k in K
@@ -363,8 +461,11 @@ function build_model(data::DataGVRP)
                 if !( (i, j) in data.E´) && i < j
                     e = (i,j)
                      if i in C && j in C && get_value(gvrp.optimizer, x[i,j,k]) > 1.001
-                        println("Adding edge ub cut for e = ", e)
+                        stack = CrayonStack()
+                        println(BLUE_FG,"Adding edge ub cut for e = ", e)
                         add_dynamic_constr!(gvrp.optimizer, [x[i,j,k]], [1.0], <=, 1.0, "edge_ub")
+                        stack = CrayonStack()
+                        print(stack,"")
                      end
                 end
             end
@@ -433,7 +534,10 @@ function build_model(data::DataGVRP)
               lhs_coeff = vcat([1.0 for e in E_k if w´[e] > 0.5], [- t( data, ed(e[1],e[2]) ) * 2.0/data.T for e in E_k if z´[e] > 0.5])
 
               add_dynamic_constr!(gvrp.optimizer, lhs_vars, lhs_coeff, >=, 0.0, "timeCut")
-              println(">>>>> Add min cuts time: ", 1, " cut(s) added") 
+              stack = CrayonStack()
+              println(YELLOW_FG,">>>>> Add min cuts time: ", 1, " cut(s) added") 
+              stack = CrayonStack()
+              print(stack,"")
             end
         end
     end
@@ -459,28 +563,32 @@ function build_model(data::DataGVRP)
         end
 
         s = V[1]
-        for i in V
+        #for i in V
             for j in V
                 maxFlow, flows, cut = SparseMaxFlowMinCut.find_maxflow_mincut(SparseMaxFlowMinCut.Graph(n, g), s, j)
                 #if (maxFlow / M) > (T - 0.001) && !in(cut, added_cuts)
-                if !((i, j) in data.E´) && (maxFlow / M) < (2 - 0.001) && !in(cut, added_cuts)
+                #if !((i, j) in data.E´) && (maxFlow / M) < (2 - 0.001) && !in(cut, added_cuts)
+                if (maxFlow / M) < (2 - 0.001) && !in(cut, added_cuts)
                     set1, set2 = [], []
                     [cut[i] == 1 ? push!(set1, i) : push!(set2, i) for i in 1:n]
 
                     lhs_vars = [x[i, j, k] for i in set2 for j in set1 for k in K]
                     lhs_coeff = [1.0 for i in set2 for j in set1 for k in K]
 
-                    #add_dynamic_constr!(gvrp.optimizer, lhs_vars, lhs_coeff, >=, 2.0 * floor(ceil(sum(data.G´.V´[i].service_time for i in (c in set1 ? set1 : set2) if i in C)/T)), "mincut")
+                    #add_dynamic_constr!(gvrp.optimizer, lhs_vars, lhs_coeff, >=, 2.0 * floor(ceil(sum(data.G´.V´[i].service_time for i in (i in set1 ? set1 : set2) if i in C)/data.T)), "maxFlow")
+                    stack = CrayonStack()
+                    println(GREEN_FG,"maxflow_callback")
                     add_dynamic_constr!(gvrp.optimizer, lhs_vars, lhs_coeff, >=, 2.0, "maxFlow")
-
+                    stack = CrayonStack()
+                    print(stack,"")
                     push!(added_cuts, cut)
                 end
             end
-        end
+        #end
     end
 
     function mincut_callback()
-        println("MinCut ...")
+        #println("MinCut ...")
         # for each route
         for k in K
           s = V[1]
@@ -516,13 +624,16 @@ function build_model(data::DataGVRP)
                 if i in V
                   for j in comp
                     if i != j && !((i, j) in data.E´)
-                      add_dynamic_constr!(gvrp.optimizer, 
+                        stack = CrayonStack()
+                        println(RED_FG,"min_cut")
+                        add_dynamic_constr!(gvrp.optimizer, 
                                           vcat(lhs_vars, [x[i, j, k]]), 
                                           vcat(lhs_coeff, [-1.0]), 
                                           >=, 0.0, "minCut")
-                      println("add cut")
+                        stack = CrayonStack()
+                        print(stack,"")
+                        #push!(added_cuts, cut)
                     end
-                    #push!(added_cuts, cut)
                   end
                 end
               end
@@ -531,7 +642,7 @@ function build_model(data::DataGVRP)
         end
         
         if length(added_cuts) > 0 
-          println(">>>>> Add min cuts : ", length(added_cuts), " cut(s) added") 
+          println(">>>>> TOTAL cuts : ", length(added_cuts), " cut(s) added") 
         end
     end
 
@@ -540,8 +651,10 @@ function build_model(data::DataGVRP)
     end
 
     add_cut_callback!(gvrp, edge_ub_callback, "edge_ub")
+    #if length(data.E´) > 0
+        add_cut_callback!(gvrp, mincut_callback, "minCut")
+    #end
     add_cut_callback!(gvrp, maxflow_callback, "maxFlow")
-    add_cut_callback!(gvrp, mincut_callback, "minCut")
     #add_cut_callback!(gvrp, time_callback, "timeCut")
     #add_cut_callback!(gvrp, kPathCut_callback, "kPathCut")
 

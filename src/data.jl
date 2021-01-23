@@ -6,7 +6,6 @@ using Crayons.Box
 
 MAX_INT     = 999999999
 MAX_DOUBLE  = 999999999
-
 MIN_DOUBLE  = -9.999999999999e8
 
 mutable struct Vertex
@@ -76,9 +75,9 @@ end
 function EUC_dist(u::Vertex, v::Vertex)
     x_sq = (v.pos_x - u.pos_x)^2
     y_sq = (v.pos_y - u.pos_y)^2
-    return floor(sqrt(x_sq + y_sq) + 0.5)
+    #return floor(sqrt(x_sq + y_sq) + 0.5)
     #return ceil(sqrt(x_sq + y_sq) + 0.5)
-    #return sqrt(x_sq + y_sq) + 0.5
+    return sqrt(x_sq + y_sq) + 0.5
 end
 
 contains(p, s) = findnext(s, p, 1) != nothing
@@ -188,6 +187,10 @@ function readEMHInstance(app::Dict{String,Any})
             push!(graph, (i, j, cost))
           else
             data.G´.cost[e] = 999999999.9
+            #grafo induzido pelos AFs
+            #if i in data.F && j in data.F push!(graph, (i, j, cost)) end
+            
+            #grafo geral
             push!(graph, (i, j, cost))
           end
           #append!( graph, [ (i, j , cost ) ] )
@@ -201,7 +204,12 @@ function readEMHInstance(app::Dict{String,Any})
             
             #cost2 = 9.0#(data, ed(i, j))
             
+            #grafo induzido pelos AFs
+            #if i in data.F && j in data.F push!(graph, (i, j, cost)) end
+            
+            #grafo geral
             push!(graph, (i, j, cost))
+
             #append!( graph, [ (i, j , cost ) ] )
 
             data.max_d  = ( data.max_d < d(data, ed(i, j)) ) ? d(data, ed(i, j)) : data.max_d
@@ -235,11 +243,13 @@ function readEMHInstance(app::Dict{String,Any})
     push!( data.LB_E, 0.0 )
     end
     """
-
+    
     println("DijkstraPath ...")
     src, dst = 4, 9
-    path, cost = dijkstrapath(g, src, dst)
-    println("Shortest path from $src to $dst: ", isempty(path) ? "no possible path" : join(path, " → "), " (cost $cost)")
+    path, costT = dijkstrapath(g, src, dst)
+    println("Shortest path from $src to $dst: ", isempty(path) ? "no possible path" : join(path, " → "), " (cosT: $costT)")
+    path, costT, costF = dijkstrapath2(data, g, src, dst)
+    println("Shortest path* from $src to $dst: ", isempty(path) ? "no possible path" : join(path, " → "), " (cosT: $costT <> costF: $costF)")
 
     print_matrix(data, "time_cost")
     #print_matrix(data, "fuel_cost")
@@ -514,6 +524,10 @@ edges(data::DataGVRP) = data.G´.E # return set of arcs
 d(data,e) = (e[1] != e[2] && !((e[1], e[2]) in data.E´) ) ? data.G´.cost[e] : 999999999.9 # cost of the edge e
 f(data,e) = (e[1] != e[2] && !((e[1], e[2]) in data.E´) ) ? d(data, e) * data.ρ : 999999999.9 # fuel of the arc a 
 t(data,e) = (e[1] != e[2] && !((e[1], e[2]) in data.E´) ) ? d(data, e) / data.ε : 999999999.9 # time of the arc a 
+
+# teste p/ checar dijkstrapath2
+#t(data,e) = (e[1] != e[2] && !((e[1], e[2]) in data.E´) ) ? ((e[1]==7 && e[2]==9) ? 15 : d(data, e) / data.ε ) : 999999999.9 # time of the arc a 
+
 dimension(data::DataGVRP) = length(data.G´.V´) # return number of vertices
 nb_vertices(data::DataGVRP) = length(vertices(data))
 
@@ -771,7 +785,8 @@ function cost_BFS_path(data::DataGVRP, ii::Integer, jj::Integer)
 end
 
 function min_LB_E_j(data::DataGVRP, g)
-  #LB_E = Array{Float64}
+  n = nb_vertices(data)
+  V = [i for i in 1:n]
   C´ = Array{Int64}
   C´ = []
   push!(C´, 1 )
@@ -804,7 +819,7 @@ function min_LB_E_j(data::DataGVRP, g)
           jj = 1
 
           src, dst = 1, _f
-          path, cost_t = dijkstrapath(g, src, dst)
+          path, cost_t, cost_f = dijkstrapath2(data, g, src, dst)
           #println("\n",isempty(path) ? "no possible path" : join(path, " → ")," len: ",length(path))
           #!( cost_t <= data.T && length(path)<1 )
           t_f = !( cost_t <= data.T) ? 999999999 : cost_t
@@ -815,7 +830,7 @@ function min_LB_E_j(data::DataGVRP, g)
           end
 
           src, dst = 1, _r
-          path, cost_t = dijkstrapath(g, src, dst)
+          path, cost_t, cost_f = dijkstrapath2(data, g, src, dst)
           #println("\n",isempty(path) ? "no possible path" : join(path, " → ")," len: ",length(path),"\n")
           #!( cost_t <= data.T && length(path)<1 )
           t_r = !( cost_t <= data.T) ? 999999999 : cost_t
@@ -841,6 +856,7 @@ function min_LB_E_j(data::DataGVRP, g)
     #push!( data.LB_E, 0.0 )
     #push!( data.LB_E, data.min_f )
     push!( data.LB_E, min( f( data, ed( e_jf[1], e_jf[2] ) ) , f( data, ed( e_jr[1], e_jr[2] ) ) ) )
+    
     #push!( data.LB_E, min( min_cost_e_jf1 , min_cost_e_jr1 ) )
   end
   println(RED_FG, data.LB_E)
@@ -937,6 +953,51 @@ function dijkstrapath(g::Digraph{T,U}, source::U, dest::U) where {T, U}
         return rst, cost
     end
 end
+
+function dijkstrapath2(data::DataGVRP, g::Digraph{T,U}, source::U, dest::U) where {T, U}
+    @assert source ∈ vertices(g) "$source is not a vertex in the graph"
+    cost_fuel_x = 0.0#(cost_t * data.ε * data.ρ )
+    cost_fuel_y = 0.0#(cost_t * data.ε * data.ρ )
+
+    # Easy case
+    if source == dest return [source], 0, 0 end
+    # Initialize variables
+    inf  = typemax(T)
+    dist = Dict(v => inf for v in vertices(g))
+    prev = Dict(v => v   for v in vertices(g))
+    dist[source] = 0
+    Q = copy(vertices(g))
+    neigh = Dict(v => neighbours(g, v) for v in vertices(g))
+ 
+    # Main loop
+    while !isempty(Q)
+        u = reduce((x, y) -> ( dist[x] < dist[y] && dist[x] <= data.T ) ? x : ( dist[y] < dist[x] && dist[y] <= data.T) ? y : x , Q)
+        #println(Q, " <> ", u)
+        pop!(Q, u)
+        if dist[u] == inf || u == dest break end
+        for (v, cost) in neigh[u]
+            alt = dist[u] + cost
+            if alt < dist[v] && dist[u] <= data.T
+                dist[v] = alt
+                prev[v] = u
+            end
+        end
+    end
+     
+    # Return path: #cost_fuel = ( cost_t * data.ε * data.ρ ) / length(path)
+    rst, cost = U[], dist[dest]
+    if prev[dest] == dest
+        return rst, cost, ( cost * data.ε * data.ρ / length(rst) )
+    else
+        while dest != source
+            pushfirst!(rst, dest)
+            dest = prev[dest]
+        end
+        pushfirst!(rst, dest)
+        return rst, cost, ( cost * data.ε * data.ρ / length(rst) )
+    end
+end
+
 #--------------------------------------------------------------------------------------
 
 #testgraph = [("a", "b", 7),  ("a", "c", 9),  ("a", "f", 14), ("b", "c", 10),

@@ -40,7 +40,7 @@ function parse_commandline(args_array::Array{String,1}, appfolder::String)
         "--batch", "-b"
             help = "batch file path"
         "--instance_type", "-i"
-            help = "Select the instance type (EMH, MATHEUS)"
+            help = "Select the instance type (EMH, MATHEUS, Andelmin-Bartolini)"
             default = "EMH"
     end
    return parse_args(args_array, s)
