@@ -220,3 +220,57 @@ function drawsolution(tikzpath, data, solution)
     end
   end
 end
+
+function drawsolution2(tikzpath, data, optimizer, x, app)
+   open(tikzpath, "w") do f
+      write(f,"\\documentclass[crop,tikz]{standalone}\n\\begin{document}\n")
+      # get limits to draw
+      pos_x_vals = [i.pos_x for i in data.G′.V′]
+      pos_y_vals = [i.pos_y for i in data.G′.V′]
+      scale_fac = 1/(max(maximum(pos_x_vals),maximum(pos_y_vals))/10)
+      write(f,"\\begin{tikzpicture}[thick, scale=10, every node/.style={scale=0.3}]\n")
+      for i in data.G′.V′
+         x_plot = scale_fac*i.pos_x
+         y_plot = scale_fac*i.pos_y
+         if i.id_vertex == 1 # plot depot
+            write(f, "\t\\node[draw, line width=0.1mm, rectangle, fill=yellow, inner sep=0.05cm, scale=1.4] (v$(i.id_vertex)) at ($(x_plot),$(y_plot)) {\\footnotesize $(i.id_vertex)};\n")
+            # Uncomment to plot without vertex id
+            #write(f, "\t\\node[draw, rectangle, fill=yellow, scale=1.4] (v$(i.id_vertex)) at ($(x_plot),$(y_plot)) {};\n")
+         elseif i.id_vertex in data.C
+            write(f, "\t\\node[draw, line width=0.1mm, circle, fill=white, inner sep=0.05cm] (v$(i.id_vertex)) at ($(x_plot),$(y_plot)) {\\footnotesize $(i.id_vertex)};\n")
+            # Uncomment to plot without vertex id
+            #write(f, "\t\\node[draw, circle, fill=white] (v$(i.id_vertex)) at ($(x_plot),$(y_plot)) {};\n")
+         else
+            write(f, "\t\\node[draw, line width=0.1mm, circle, fill=red, inner sep=0.05cm] (v$(i.id_vertex)) at ($(x_plot),$(y_plot)) {\\footnotesize $(i.id_vertex)};\n")
+         end
+      end
+      E, dim = edges(data), dimension(data)
+      for e in E
+         val = get_value(optimizer, x[e])
+         if val > 0.5
+            edge_style = "-,line width=0.8pt"
+            write(f, "\t\\draw[$(edge_style)] (v$(e[1])) -- (v$(e[2]));\n")
+         end
+      end
+      # for r in solution.routes
+      #    #=prev = r[1] # Uncomment (and comment below) to hide edges with the depot
+      #    for i in r[2:end]
+      #       e = (prev,i)
+      #       write(f, "\t\\draw[-,line width=0.8pt] (v$(e[1])) -- (v$(e[2]));\n")
+      #       prev = i
+      #    end=#
+      #    prev = 0
+      #    for i in r
+      #       e = (prev,i)
+      #       # edge_style = (prev == 0) ? "dashed,-,line width=0.2pt,opacity=.2" : "-,line width=0.8pt"
+      #       edge_style = "-,line width=0.8pt"
+      #       write(f, "\t\\draw[$(edge_style)] (v$(e[1])) -- (v$(e[2]));\n")
+      #       prev = i
+      #    end
+      #    # write(f, "\t\\draw[dashed,-,line width=0.2pt,opacity=.2] (v0) -- (v$(prev));\n") 
+      #    write(f, "\t\\draw[-,line width=0.8pt] (v0) -- (v$(prev));\n") 
+      # end
+      write(f, "\\end{tikzpicture}\n")
+      write(f, "\\end{document}\n")
+   end   
+end

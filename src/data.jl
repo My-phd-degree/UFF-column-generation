@@ -18,6 +18,8 @@ end
 mutable struct DataGVRP
     G′::InputGraph
     depot_id ::Int
+    coord::Bool # instance with NODE_COORD_SECTION
+    round::Bool # Is the distance matrix rounded?
     F::Array{Int64} # AFSs nodes
     C::Array{Int64} # Customers nodes
     β::Float64 # Total distance between two consecutive black vertices
@@ -49,7 +51,7 @@ contains(p, s) = findnext(s, p, 1) != nothing
 
 function read_Andelmin_Bartolini_Instance(app::Dict{String,Any})
     G′ = InputGraph([], [], Dict())
-    data = DataGVRP(G′, 1, [], [], 0.0, 0.0, 0.0, 0.0)
+    data = DataGVRP(G′, 1, true, false, [], [], 0.0, 0.0, 0.0, 0.0)
     sepChar = ' '
     open(app["instance"]) do f
       # Ignore header and get paper default values
@@ -131,7 +133,7 @@ end
 
 function readEMHInstance(app::Dict{String,Any})
     G′ = InputGraph([], [], Dict())
-    data = DataGVRP(G′, 1, [], [], 0.0, 0.0, 0.0, 0.0)
+    data = DataGVRP(G′, 1, true, false, [], [], 0.0, 0.0, 0.0, 0.0)
 
     open(app["instance"]) do f
       # Ignore header
@@ -206,7 +208,7 @@ end
 
 function readMatheusInstance(app::Dict{String,Any})
     G′ = InputGraph([], [], Dict())
-    data = DataGVRP(G′, 1, [], [], 0.0, 0.0, 0.0, 0.0)
+    data = DataGVRP(G′, 1, true, false, [], [], 0.0, 0.0, 0.0, 0.0)
     sepChar = ';'
     open(app["instance"]) do f
       # vehicle data
