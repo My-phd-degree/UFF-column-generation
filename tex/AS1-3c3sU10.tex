@@ -1,0 +1,17 @@
+\documentclass[crop,tikz]{standalone}
+\begin{document}
+\begin{tikzpicture}[thick, scale=10, every node/.style={scale=0.3}]
+	\node[draw, line width=0.1mm, rectangle, fill=yellow, inner sep=0.05cm, scale=1.4] (v1) at (-19.63977854592513,9.531307113995016) {\footnotesize 1};
+	\node[draw, line width=0.1mm, circle, fill=red, inner sep=0.05cm] (v2) at (-19.346879941885813,9.325399814017048) {\footnotesize 2};
+	\node[draw, line width=0.1mm, circle, fill=red, inner sep=0.05cm] (v3) at (-19.536685361052353,10.0) {\footnotesize 3};
+	\node[draw, line width=0.1mm, circle, fill=red, inner sep=0.05cm] (v4) at (-20.060906990080387,9.474241331786997) {\footnotesize 4};
+	\node[draw, line width=0.1mm, circle, fill=white, inner sep=0.05cm] (v5) at (-19.473807025580474,9.892489501724302) {\footnotesize 5};
+	\node[draw, line width=0.1mm, circle, fill=white, inner sep=0.05cm] (v6) at (-19.694264209460986,9.685284171884716) {\footnotesize 6};
+	\node[draw, line width=0.1mm, circle, fill=white, inner sep=0.05cm] (v7) at (-19.838358461948776,9.790653024163442) {\footnotesize 7};
+	\draw[-,line width=0.8pt] (v1) -- (v2);
+	\draw[-,line width=0.8pt] (v1) -- (v5);
+	\draw[-,line width=0.8pt] (v1) -- (v6);
+	\draw[-,line width=0.8pt] (v5) -- (v7);
+	\draw[-,line width=0.8pt] (v6) -- (v7);
+\end{tikzpicture}
+\end{document}
