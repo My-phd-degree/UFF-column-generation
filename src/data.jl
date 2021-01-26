@@ -304,3 +304,14 @@ nb_vertices(data::DataGVRP) = length(vertices(data))
 function δ(data::DataGVRP, i::Integer)
     return vcat([(j, i) for j in 1:i - 1 if (j, i) in data.G′.E], [(i, j) for j in i + 1:(length(data.G′.V′)) if (i, j) in data.G′.E])
 end
+
+"""
+    for i in V
+        for j in V
+            if i < j && !((i, j) in data.E´) )
+            end
+        end
+    end
+
+    if i < j && !((i, j) in data.E´)
+"""

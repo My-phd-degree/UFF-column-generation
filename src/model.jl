@@ -114,6 +114,17 @@ function cplex(data::DataGVRP)
   obj = getobjectivevalue(gvrp_)
 end
 
+"""
+    for i in V
+        for j in V
+            if i < j && !((i, j) in data.E´) )
+            end
+        end
+    end
+
+    if i < j && !((i, j) in data.E´)
+"""
+
 function build_model(data::DataGVRP)
   E = edges(data) # set of edges of the input graph G′
   n = nb_vertices(data)
