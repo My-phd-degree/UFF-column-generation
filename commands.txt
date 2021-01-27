@@ -2,8 +2,13 @@ docker run -it -v /home/mraylan/Documents/repositories/UFF-column-generation/GVR
 
 include("GVRP/src/run.jl")
 include("/GVRP/src/model.jl")
+
 args = ["GVRP/data/EMH/AS1-5c3sU10.txt", "--preprocessings", "GVRP/data/EMH/preprocessings/AS1_20c3sU10.txt_preprocessed_edges.txt", "--instance_type", "EMH"]
+
+args = ["GVRP/data/Matheus/non-consec/mlsa_flow_10c5f25.000000B-P-n16-k8.vrp", "--preprocessings", "GVRP/data/Matheus/non-consec/preprocessings/mlsa_flow_10c5f25.000000B-P-n16-k8.vrp_preprocessed_edges.txt", "--instance_type", "Matheus"]
+
 args = ["GVRP/data/Matheus/non-consec/mlsa_flow_10c5f25.000000B-P-n16-k8.vrp", "--instance_type", "Matheus"]
+
 args = ["GVRP/data/Andelmin-Bartolini/AB101.dat", "--instance_type", "Andelmin-Bartolini"]
 args = ["GVRP/data/EMH/AS1-5c3sU10.txt", "--instance_type", "EMH"]
 

@@ -11,21 +11,31 @@ end
 # Directed graph
 mutable struct InputGraph
     V′::Array{Vertex} # set of vertices
-    E::Array{Tuple{Int64,Int64}} # set of edges
+    E::Array{Tuple{Int64,Int64}}  # set of edges
     cost::Dict{Tuple{Int64,Int64},Float64} # cost for each edge
 end
 
 mutable struct DataGVRP
     G′::InputGraph
     depot_id ::Int
-    coord::Bool # instance with NODE_COORD_SECTION
-    round::Bool # Is the distance matrix rounded?
     F::Array{Int64} # AFSs nodes
     C::Array{Int64} # Customers nodes
-    β::Float64 # Total distance between two consecutive black vertices
+    M::Array{Int64} # Vehicles IDs
+    E´::Array{Tuple{Int64,Int64}} # set of pre-processed edges
+    coord::Bool # instance with NODE_COORD_SECTION
+    round::Bool # Is the distance matrix rounded?
+    β::Float64 # Capacity
     T::Float64 # Route time limit
     ρ::Float64 # Vehicle fuel comsumption rate
     ε::Float64 # Vehicle average speed
+    m::Int64 # Qtd of vehicles
+    max_d::Float64
+    min_d::Float64
+    max_f::Float64
+    min_f::Float64
+    max_t::Float64
+    min_t::Float64
+    LB_E::Array{Float64}
 end
 
 vertices(data::DataGVRP) = [i.id_vertex for i in data.G′.V′[1:end]] # return set of vertices
@@ -51,7 +61,8 @@ contains(p, s) = findnext(s, p, 1) != nothing
 
 function read_Andelmin_Bartolini_Instance(app::Dict{String,Any})
     G′ = InputGraph([], [], Dict())
-    data = DataGVRP(G′, 1, true, false, [], [], 0.0, 0.0, 0.0, 0.0)
+    #data = DataGVRP(G′, 1, true, false, [], [], 0.0, 0.0, 0.0, 0.0)
+    data = DataGVRP(G′, 1 , [], [], [], [], true,false,0.0,0.0,0.0,0.0,0,0.0,0.0,0.0,0.0,0.0,0.0,[])
     sepChar = ' '
     open(app["instance"]) do f
       # Ignore header and get paper default values
@@ -105,14 +116,14 @@ function read_Andelmin_Bartolini_Instance(app::Dict{String,Any})
     end
 
     #read preprocessings
-    invalidEdges = []
+    data.E´ = []
     if haskey(app, "preprocessings") && app["preprocessings"] != nothing
       open(app["preprocessings"]) do f
         while !eof(f)
           # read edge
           line = readline(f)
           edge = split(line, [' ', ',']; limit=0, keepempty=false)
-          push!(invalidEdges, (parse(Int, edge[1]) + 1, parse(Int, edge[2]) + 1))
+          push!(data.E´, (parse(Int, edge[1]) , parse(Int, edge[2]) ))
         end
       end
     end
@@ -120,7 +131,7 @@ function read_Andelmin_Bartolini_Instance(app::Dict{String,Any})
     # create edges
     for i in vertices(data)
       for j in vertices(data) # add arcs between vertices
-        if i < j && !((i, j) in invalidEdges)
+        if i < j && !((i, j) in data.E´)
           e = (i, j)
           push!(G′.E, e) # add edge e
           data.G′.cost[e] = distance(data, e)
@@ -133,13 +144,15 @@ end
 
 function readEMHInstance(app::Dict{String,Any})
     G′ = InputGraph([], [], Dict())
-    data = DataGVRP(G′, 1, true, false, [], [], 0.0, 0.0, 0.0, 0.0)
+    data = DataGVRP(G′, 1 , [], [], [], [], true,false,0.0,0.0,0.0,0.0,0,0.0,0.0,0.0,0.0,0.0,0.0,[])
 
     open(app["instance"]) do f
       # Ignore header
       readline(f)
       # Read vertices
       i = 1
+      data.max_d = data.max_f = data.max_t = 0.0
+      data.min_d = data.min_f = data.min_t = 999999999.9
       while !eof(f)
         line = readline(f)
         aux = split(line, ['\t']; limit=0, keepempty=false)
@@ -172,22 +185,31 @@ function readEMHInstance(app::Dict{String,Any})
       data.ρ = parse(Float64, split(line, ['/']; limit=0, keepempty=false)[2])
       # Get vehicle time limit
       line = readline(f)
-#      data.T = 10.75 
+      #data.T = 10.75 
       data.T = 700 
       # Get vehicle average speed
       line = readline(f)
       data.ε = parse(Float64, split(line, ['/']; limit=0, keepempty=false)[2])/60.0
+      # Get amount of vehicle
+      line = readline(f)
+      #data.m = parse(Int64, split(line, ['/']; limit=0, keepempty=false)[2])
+      data.m = length(data.C)
+      
+      for k in 1:data.m 
+        push!(data.M, k)
+      end
     end
 
     #read preprocessings
-    invalidEdges = []
+    data.E´ = []
+    
     if haskey(app, "preprocessings") && app["preprocessings"] != nothing
       open(app["preprocessings"]) do f
         while !eof(f)
           # read edge
           line = readline(f)
           edge = split(line, [' ', ',']; limit=0, keepempty=false)
-          push!(invalidEdges, (parse(Int, edge[1]) + 1, parse(Int, edge[2]) + 1))
+          push!(data.E´, (parse(Int, edge[1]) , parse(Int, edge[2]) ))
         end
       end
     end
@@ -195,10 +217,149 @@ function readEMHInstance(app::Dict{String,Any})
     # create edges
     for i in vertices(data)
       for j in vertices(data) # add arcs between vertices
-        if i < j && !((i, j) in invalidEdges)
-          e = (i, j)
+        e = (i, j)
+        if haskey(app, "preprocessings") && app["preprocessings"] != nothing
           push!(G′.E, e) # add edge e
-          data.G′.cost[e] = distance(data, e)
+          cost = 999999999.9
+          if i < j && !((i, j) in data.E´)
+            data.G′.cost[e] = distance(data, e)
+            data.max_d  = ( data.max_d < d(data, (i, j)) ) ? d(data, (i, j)) : data.max_d
+            data.max_f  = ( data.max_f < f(data, (i, j)) ) ? f(data, (i, j)) : data.max_f
+            data.max_t  = ( data.max_t < t(data, (i, j)) ) ? t(data, (i, j)) : data.max_t
+
+            data.min_d = ( data.min_d > d(data, (i, j)) ) ? d(data, (i, j)) : data.min_d
+            data.min_f = ( data.min_f > f(data, (i, j)) ) ? f(data, (i, j)) : data.min_f
+            data.min_t = ( data.min_t > t(data, (i, j)) ) ? t(data, (i, j)) : data.min_t
+            cost = convert(Float64, t(data, (i, j)) ) + data.G′.V′[j].service_time
+          else
+            data.G′.cost[e] = 999999999.9
+          end
+        elseif i < j
+            push!(G′.E, e) # add edge e
+            data.G′.cost[e] = distance(data, e)
+            cost = convert(Float64, t(data, (i, j)) ) + data.G′.V′[j].service_time
+
+            data.max_d  = ( data.max_d < d(data, (i, j)) ) ? d(data, (i, j)) : data.max_d
+            data.max_f  = ( data.max_f < f(data, (i, j)) ) ? f(data, (i, j)) : data.max_f
+            data.max_t  = ( data.max_t < t(data, (i, j)) ) ? t(data, (i, j)) : data.max_t
+
+            data.min_d = ( data.min_d > d(data, (i, j)) ) ? d(data, (i, j)) : data.min_d
+            data.min_f = ( data.min_f > f(data, (i, j)) ) ? f(data, (i, j)) : data.min_f
+            data.min_t = ( data.min_t > t(data, (i, j)) ) ? t(data, (i, j)) : data.min_t
+        end
+      end
+    end
+
+    return data
+end
+
+function readMatheusInstanc2(app::Dict{String,Any})
+    G′ = InputGraph([], [], Dict())
+    data = DataGVRP(G′, 1 , [], [], [], [], true,false,0.0,0.0,0.0,0.0,0,0.0,0.0,0.0,0.0,0.0,0.0,[])
+    sepChar = ';'
+    open(app["instance"]) do f
+      data.max_d = data.max_f = data.max_t = 0.0
+      data.min_d = data.min_f = data.min_t = 999999999.9
+      # vehicle data
+      # ignore header
+      readline(f)
+      # get vehicle average speed
+      line = readline(f)
+      data.ε = parse(Float64, split(line, [sepChar]; limit=0, keepempty=false)[2])
+      # get vehicle time limit
+      line = readline(f)
+      data.T = parse(Float64, split(line, [sepChar]; limit=0, keepempty=false)[2])
+      # get vehicle fuel consumptin rate
+      line = readline(f)
+      data.ρ = parse(Float64, split(line, [sepChar]; limit=0, keepempty=false)[2])
+      # get beta
+      line = readline(f)
+      data.β = parse(Float64, split(line, [sepChar]; limit=0, keepempty=false)[2])
+      # depot
+      # ignore headers
+      readline(f)
+      readline(f)
+      line = readline(f)
+      aux = split(line, [sepChar]; limit=0, keepempty=false)
+      v = Vertex(parse(Int, aux[1]) + 1, parse(Float64, aux[2]), parse(Float64, aux[3]), parse(Float64, aux[4]))
+      push!(G′.V′, v) 
+      i = 2
+      # get customers
+      # ignore headers
+      line = readline(f)
+      line = readline(f)
+      while true 
+        line = readline(f)
+        aux = split(line, [sepChar]; limit=0, keepempty=false)
+        if length(aux) == 1
+          break
+        end
+        v = Vertex(parse(Int, aux[1]) + 1, parse(Float64, aux[2]), parse(Float64, aux[3]), parse(Float64, aux[4]))
+        push!(data.C, i)
+        push!(G′.V′, v) 
+        i = i + 1
+      end
+      # get AFSs
+      # ignore headers
+      line = readline(f)
+      while !eof(f) 
+        line = readline(f)
+        aux = split(line, [sepChar]; limit=0, keepempty=false)
+        if length(aux) == 1
+          break
+        end
+        v = Vertex(parse(Int, aux[1]) + 1, parse(Float64, aux[2]), parse(Float64, aux[3]), parse(Float64, aux[4]))
+        push!(data.F, i)
+        push!(G′.V′, v) 
+        i = i + 1
+      end
+    end
+
+    #read preprocessings
+    data.E´ = []
+    if haskey(app, "preprocessings") && app["preprocessings"] != nothing
+      open(app["preprocessings"]) do f
+        while !eof(f)
+          # read edge
+          line = readline(f)
+          edge = split(line, [' ', ',']; limit=0, keepempty=false)
+          push!(data.E´, (parse(Int64, edge[1]) + 1, parse(Int64, edge[2]) + 1 ))
+        end
+      end
+    end
+
+    for i in vertices(data)
+      for j in vertices(data) # add arcs between vertices
+        e = (i, j)
+        a, b = data.G′.V′[i], data.G′.V′[j]
+        if haskey(app, "preprocessings") && app["preprocessings"] != nothing
+          push!(G′.E, e) # add edge e
+          cost = 999999999.9
+          if i < j && !((i, j) in data.E´)
+            data.G′.cost[e] = distance(data, e)
+            data.max_d  = ( data.max_d < d(data, (i, j)) ) ? d(data, (i, j)) : data.max_d
+            data.max_f  = ( data.max_f < f(data, (i, j)) ) ? f(data, (i, j)) : data.max_f
+            data.max_t  = ( data.max_t < t(data, (i, j)) ) ? t(data, (i, j)) : data.max_t
+
+            data.min_d = ( data.min_d > d(data, (i, j)) ) ? d(data, (i, j)) : data.min_d
+            data.min_f = ( data.min_f > f(data, (i, j)) ) ? f(data, (i, j)) : data.min_f
+            data.min_t = ( data.min_t > t(data, (i, j)) ) ? t(data, (i, j)) : data.min_t
+          else
+            data.G′.cost[e] = 999999999.9
+          end
+        #if i < j && !((a.id_vertex, b.id_vertex) in invalidEdges)
+        elseif i < j
+            push!(G′.E, e) # add edge e
+            data.G′.cost[e] = distance(data, e)
+            cost = convert(Float64, t(data, (i, j)) ) + data.G′.V′[j].service_time
+
+            data.max_d  = ( data.max_d < d(data, (i, j)) ) ? d(data, (i, j)) : data.max_d
+            data.max_f  = ( data.max_f < f(data, (i, j)) ) ? f(data, (i, j)) : data.max_f
+            data.max_t  = ( data.max_t < t(data, (i, j)) ) ? t(data, (i, j)) : data.max_t
+
+            data.min_d = ( data.min_d > d(data, (i, j)) ) ? d(data, (i, j)) : data.min_d
+            data.min_f = ( data.min_f > f(data, (i, j)) ) ? f(data, (i, j)) : data.min_f
+            data.min_t = ( data.min_t > t(data, (i, j)) ) ? t(data, (i, j)) : data.min_t
         end
       end
     end
@@ -208,7 +369,7 @@ end
 
 function readMatheusInstance(app::Dict{String,Any})
     G′ = InputGraph([], [], Dict())
-    data = DataGVRP(G′, 1, true, false, [], [], 0.0, 0.0, 0.0, 0.0)
+    data = DataGVRP(G′, 1 , [], [], [], [], true,false,0.0,0.0,0.0,0.0,0,0.0,0.0,0.0,0.0,0.0,0.0,[])
     sepChar = ';'
     open(app["instance"]) do f
       # vehicle data
@@ -294,9 +455,9 @@ function readMatheusInstance(app::Dict{String,Any})
 end
 
 edges(data::DataGVRP) = data.G′.E # return set of arcs
-d(data,e) = (e[1] != e[2]) ? data.G′.cost[e] : 0.0 # cost of the edge e
-f(data, e) = d(data, e) * data.ρ # fuel of the arc a 
-t(data, e) = (d(data, e) / data.ε) + (data.G′.V′[e[1]].service_time + data.G′.V′[e[2]].service_time)/2.0 # time of the arc a 
+d(data,e) = (e[1] != e[2] && !((e[1], e[2]) in data.E´) ) ? data.G′.cost[e] : 999999999.9 # cost of the edge e
+f(data, e) = (e[1] != e[2] && !((e[1], e[2]) in data.E´) ) ? d(data, e) * data.ρ : 999999999.9 # fuel of the edge e
+t(data, e) = (e[1] != e[2] && !((e[1], e[2]) in data.E´) ) ? (d(data, e) / data.ε) + (data.G′.V′[e[1]].service_time + data.G′.V′[e[2]].service_time)/2.0 : 999999999.9 # time of the edge e 
 dimension(data::DataGVRP) = length(data.G′.V′) # return number of vertices
 nb_vertices(data::DataGVRP) = length(vertices(data))
 
@@ -304,14 +465,3 @@ nb_vertices(data::DataGVRP) = length(vertices(data))
 function δ(data::DataGVRP, i::Integer)
     return vcat([(j, i) for j in 1:i - 1 if (j, i) in data.G′.E], [(i, j) for j in i + 1:(length(data.G′.V′)) if (i, j) in data.G′.E])
 end
-
-"""
-    for i in V
-        for j in V
-            if i < j && !((i, j) in data.E´) )
-            end
-        end
-    end
-
-    if i < j && !((i, j) in data.E´)
-"""
