@@ -1,5 +1,5 @@
 import Unicode
-#using Distances
+using Distances
 using Random
 using Crayons
 using Crayons.Box
@@ -53,7 +53,8 @@ function distance(data::DataGVRP, e::Tuple{Int64,Int64})
   vertices = data.G´.V´
   flag = 1
   # array <vertices> is indexed from 1 (depot is vertices[1], customer 1 is vertices[2], and so on)
-  return (flag == 1) ? EUC_dist(vertices[u], vertices[v]) : GEO_dist(vertices[u], vertices[v])   
+  # return (flag == 1) ? EUC_dist(vertices[u], vertices[v]) : GEO_dist(vertices[u], vertices[v])   
+  return haversine((vertices[v].pos_x, vertices[v].pos_y), (vertices[u].pos_x, vertices[u].pos_y), 4182.44949)
 end
 
 # GEO distance
@@ -135,10 +136,12 @@ function readEMHInstance(app::Dict{String,Any})
       # Get vehicle time limit
       line = readline(f)
       # data.T = parse(Float64, split(line, ['/']; limit=0, keepempty=false)[2])
-      data.T = 10.75 
+      #data.T = 10.75 
+      data.T = 700 
       # Get vehicle average speed
       line = readline(f)
-      data.ε = parse(Float64, split(line, ['/']; limit=0, keepempty=false)[2])
+      #data.ε = parse(Float64, split(line, ['/']; limit=0, keepempty=false)[2])
+      data.ε = parse(Float64, split(line, ['/']; limit=0, keepempty=false)[2])/60.0
       # Get amount of vehicle
       line = readline(f)
       #data.m = parse(Int64, split(line, ['/']; limit=0, keepempty=false)[2])
@@ -247,9 +250,9 @@ function readEMHInstance(app::Dict{String,Any})
     println("DijkstraPath ...")
     src, dst = 4, 9
     path, costT = dijkstrapath(g, src, dst)
-    println("Shortest path from $src to $dst: ", isempty(path) ? "no possible path" : join(path, " → "), " (cosT: $costT)")
+    println("Shortest path from $src to $dst: ", isempty(path) ? "no possible path" : join(path, " → "), " (cosT: $costT --- data.T: $data.T )")
     path, costT, costF = dijkstrapath2(data, g, src, dst)
-    println("Shortest path* from $src to $dst: ", isempty(path) ? "no possible path" : join(path, " → "), " (cosT: $costT <> costF: $costF)")
+    println("Shortest path* from $src to $dst: ", isempty(path) ? "no possible path" : join(path, " → "), " (cosT: $costT <> costF: $costF --- data.T: $data.T <> data.β: $data.β )")
 
     print_matrix(data, "time_cost")
     #print_matrix(data, "fuel_cost")
@@ -854,8 +857,8 @@ function min_LB_E_j(data::DataGVRP, g)
       end
     end
     #push!( data.LB_E, 0.0 )
-    #push!( data.LB_E, data.min_f )
-    push!( data.LB_E, min( f( data, ed( e_jf[1], e_jf[2] ) ) , f( data, ed( e_jr[1], e_jr[2] ) ) ) )
+    push!( data.LB_E, data.min_f )
+    #push!( data.LB_E, min( f( data, ed( e_jf[1], e_jf[2] ) ) , f( data, ed( e_jr[1], e_jr[2] ) ) ) )
     
     #push!( data.LB_E, min( min_cost_e_jf1 , min_cost_e_jr1 ) )
   end
