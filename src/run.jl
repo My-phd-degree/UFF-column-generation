@@ -90,17 +90,17 @@ function run_gvrp(app::Dict{String,Any})
   end
   println("########################################################")
   if solution_found || app["sol"] != nothing # Is there a solution?
-    print_routes(sol)
-    #checksolution(data, sol)
+    print_routes(data, sol)
+    checksolution(data, sol)
     println("Cost $(sol.cost)")
     #checksolution(data, sol)
     if app["out"] != nothing
-      writesolution(app["out"], sol)
+      writesolution(app["out"], data, sol)
     end
     if app["tikz"] != nothing
       if data.coord
         #drawsolution(app["tikz"], data, sol) # write tikz figure
-        drawsolution2(app["tikz"], data, optimizer, x, app) # write tikz figure
+        drawsolution(app["tikz"], data, sol.routes) # write tikz figure
       else
         println("TikZ figure ($(app["tikz"])) will not be generated, since the instance has no coordinates.")
       end

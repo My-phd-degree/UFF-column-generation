@@ -128,14 +128,14 @@ function build_model(data::DataGVRP)
 
   ed(i, j) = i < j ? (i, j) : (j, i)
 
- println("Customers ")
- for i in data.C
-   println(i, " ", data.G′.V′[i], ", δ($i) = $(δ(data, i))")
- end
- println("AFSs ")
- for i in data.F
-   println(i, " ", data.G′.V′[i], ", δ($i) = $(δ(data, i))")
- end
+#println("Customers ")
+#for i in data.C
+#  println(i, " ", data.G′.V′[i], ", δ($i) = $(δ(data, i))")
+#end
+#println("AFSs ")
+#for i in data.F
+#  println(i, " ", data.G′.V′[i], ", δ($i) = $(δ(data, i))")
+#end
 # println("F´: ", F´)
 # println("β: $β")
 # println("T: $T")
@@ -157,21 +157,14 @@ function build_model(data::DataGVRP)
   @constraint(gvrp.formulation, y[F[1]] >= 1)
 
 #  routes = [
-#          [0,1,10,3,10,0],
-#          [0,6,5,14,9,13,7,2,0],
-#          [0,2,8,2,0],
-#          [0,10,12,15,4,11,4,0],
-#         ]
+#           [0, 10, 12, 15, 11, 4, 0],
+#           [0, 7, 13, 9, 7, 14, 7, 0],
+#           [0, 7, 16, 5, 7, 6, 0],
+#           [0, 19, 7, 2, 8, 17, 3, 10, 1, 0],
+#          ]
 
-#depot - customer - depot 
-#routes = [
-#          [10,3,10],
-#         ]
-#depot - AFS - depot 
-#routes = [
-#          [0,2,0],
-#         ]
 if @isdefined routes
+  print
   ids = Dict{Int,Int}()
   ids_ = Dict{Int,Int}()
   for route in routes

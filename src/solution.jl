@@ -3,130 +3,124 @@ mutable struct Solution
   routes::Array{Array{Int}}
 end
 
-function get_routes(adj_matrix::Array, data::DataGVRP)
-end
+ed(i, j) = i < j ? (i, j) : (j, i)
 
 # build Solution from the variables x
 function getsolution(data::DataGVRP, optimizer::VrpOptimizer, x, objval, app::Dict{String,Any})
-
-  # adj list
+  objval = 0.0
+  routes = []
   E, dim = edges(data), dimension(data)
-  adj_list = [[] for i in 1:dim]
-  for e in E 
-    val = get_value(optimizer, x[e])
-    if val > 0.5
-      push!(adj_list[e[1]], e[2])
-      push!(adj_list[e[2]], e[1])
-      if val > 1.5
-        push!(adj_list[e[1]], e[2])
-        push!(adj_list[e[2]], e[1])
+
+#  println("Num of paths $(get_number_of_positive_paths(optimizer))")
+  for i in 1:get_number_of_positive_paths(optimizer)
+    λ = get_value(optimizer, i)
+    if λ >= 0.001 && λ <= 1 - 0.001
+      println("Frac λ with $λ")
+    end
+
+    #valid λ
+    if λ > 1 - 0.001
+      #get λ used edges
+      vars = [x[e] for e in E]
+      E_vals = get_values(optimizer, vars, i)
+      E_weights = Dict{Tuple{Int64, Float64}, Int64}()
+      #get route
+      for i in 1:length(E)
+        e = E[i]
+        e_val = E_vals[i]
+        #        if e_val > 0.001
+        #          println("$(e) : $(e_val)")
+        #        end
+        E_weights[e] = e_val
       end
+
+      #get route
+      function getRoute(i::Int64, E_weights::Dict{Tuple{Int64, Float64}, Int64}, route::Array{Int64})
+        if i == data.depot_id
+          feasible = true
+          for (e, weight) in E_weights
+            if weight > 0.001
+              feasible = false
+            end
+          end  
+          return feasible
+        end
+        for e in δ(data, i)
+          if E_weights[e] > 0.001
+            j = e[1] == i ? e[2] : e[1]
+            E_weights[e] = E_weights[e] - 1
+            push!(route, j)
+            if getRoute(j, E_weights, route)
+              return true
+            end
+            E_weights[e] = E_weights[e] + 1
+            pop!(route)
+          end
+        end
+        return false
+      end
+
+      route = [data.depot_id]
+      for e in δ(data, data.depot_id)
+        if E_weights[e] > 0.001
+          j = e[1] == data.depot_id ? e[2] : e[1]
+          E_weights[e] = E_weights[e] - 1
+          push!(route, j)
+          getRoute(j, E_weights, route)
+          break
+        end
+      end
+      push!(routes, route)
     end
   end
-
-
-# println("Num of paths $(get_number_of_positive_paths(optimizer))")
-# for i in 1:get_number_of_positive_paths(optimizer)
-#    println("$i: $(get_values(optimizer, i))")
-#   vars = [x[e] for e in E]
-#   E_ = get_values(optimizer, vars, i)
-#   for i in 1:length(E)
-#     if E_[i] > 0.001
-#       print(E[i], ": ", E_[i], ", ")
-#     end
-#   end
-#   println()
-# end
-
-  # DFS
-  visited, routes = [false for i in 1:dim], []
-  """
-  function dfs(f::Int64, adj_list::Array{Array{Int64}})
-    visited[f] = true
-  end
-  for f in data.F
-    dfs(f, adj_list)
-  end
-  """
-
-  print(adj_list)
-  for i in 1:length(adj_list)
-    print(i, ": ", adj_list[i], "\n")
-  end
-  # for j in adj_list
-  i = 1 #j[1]
-  first = i
-  if !visited[i]
-    r, prev = [], first
-    push!(r, i)
-    visited[i] = true
-    length(adj_list[i]) != 2 && i in data.C && error("Problem trying to recover the route from the x values. " *
-                                                     "Customer $i has $(length(adj_list[i])) incident edges.")
-    next, prev = (adj_list[i][1] == prev) ? adj_list[i][2] : adj_list[i][1], i
-    maxit, it = dim, 0
-    print("($prev, $next), ")
-    while next != first && it < maxit
-      length(adj_list[next]) != 2 && next in data.C && error("Problem trying to recover the route from the x values. " *
-                                                             "Customer $next has $(length(adj_list[next])) incident edges.")
-      push!(r, next)
-      visited[next] = true
-      aux = next
-      next, prev = (adj_list[next][1] == prev) ? adj_list[next][2] : adj_list[next][1], aux
-      it += 1
-      print("($prev, $next), ")
+  
+  for route in routes
+    n = length(route)
+    for i in 2:n
+      objval = objval + d(data, ed(route[i - 1], route[i]))
     end
-    print("\n")
-    push!(routes, r)
   end
-  # end
-  # if !app["noround"]
-  # objval = trunc(Int, round(objval))
-  # end
   return Solution(objval, routes)
 end
 
-function print_routes(solution)
+function print_routes(data::DataGVRP, solution::Solution)
   for (i, r) in enumerate(solution.routes)
     print("Route #$i: ")
     for j in r
-      print("$j ")
+      print("$(data.G′.V′[j].id_vertex) ")
     end
     println()
   end
 end
 
 # checks the feasiblity of a solution
-ed(i, j) = i < j ? (i, j) : (j, i)
 
 function checksolution(data::DataGVRP, solution)
-  dim, T, β = dimension(data), data.T, data.β
-  visits = [0 for i in 1:dim]
-  sum_cost = 0.0
-  for (i, r) in enumerate(solution.routes)
-    sum_time, sum_fuel, prev = 0.0, 0.0, r[1]
-    visits[r[1]] += 1
-    println(r)
-    for j in r[2:end]
-      visits[j] += 1
-      j in data.C && visits[j] == 2 && error("Customer $j was visited more than once")
-      sum_cost += d(data, ed(prev, j))
-      sum_time += t(data, ed(prev, j))
-      sum_fuel = (prev in data.F) ? 0.0 : sum_fuel
-      sum_fuel += f(data, ed(prev, j))
-      println(j)
-      (sum_time > T) && error("Route $r is violating the limit T. Total time spent is at least $(sum_time) and T is $T")
-      (sum_fuel > β) && error("Route is violating the limit β. Total fuel spent is at least $(sum_fuel) and β is $β")
-      prev = j
+  nTimesCustomersVisited = Dict{Int64, Int64}([i => 0 for i in data.C])
+  routes = solution.routes
+  for route in routes
+    n = length(route)
+    n == 0 && error("Route is empty")
+    route[1] != 1 && error("Route does not begins at the depot")
+    route[n] != 1 && error("Route does not ends at the depot")
+    consumedFuel = consumedTime = 0
+    for i in 2:n
+      a, b = route[i - 1], route[i]
+      #update resources
+      consumedFuel = consumedFuel + f(data, ed(a, b))
+      consumedTime = consumedTime + t(data, ed(a, b))
+      #error checking
+      consumedFuel > data.β && error("No fuel in $b: $consumedFuel")
+      consumedTime > data.T && error("Time exceeded in $b: $consumedTime")
+      # restore fuel
+      if b in data.F
+        consumedFuel = 0
+      elseif b in data.C
+        nTimesCustomersVisited[b] = nTimesCustomersVisited[b] + 1
+        nTimesCustomersVisited[b] > 1 && error("Customer $b visited more than once")
+      end
     end
-    if prev != r[1] 
-      sum_cost += d(data, ed(prev, r[1])) 
-      sum_fuel += f(data, ed(prev, r[1]))
-    end
-    print("Route $i (time: $sum_time, fuel: $sum_fuel)\n")
   end
-  !isempty(filter(a -> a == 0, visits)) && error("The following vertices were not visited: $(filter(a -> a == 0, visits))")
-  (abs(solution.cost - sum_cost) > 0.001) && error("Cost calculated from the routes ($sum_cost) is different from that passed as" *
-    " argument ($(solution.cost)).")
 end
 
 # read solution from file (CVRPLIB format)
@@ -161,12 +155,12 @@ function readsolution(app::Dict{String,Any})
 end
 
 # write solution in a file
-function writesolution(solpath, solution)
+function writesolution(solpath::String, data::DataGVRP, solution::Solution)
   open(solpath, "w") do f
     for (i, r) in enumerate(solution.routes)
       write(f, "Route #$i: ")
       for j in r
-        write(f, "$j ")
+        write(f, "$(data.G′.V′[j].id_vertex) ")
       end
       write(f, "\n")
     end
@@ -174,103 +168,111 @@ function writesolution(solpath, solution)
   end
 end
 
-# write solution as TikZ figure (.tex)
-function drawsolution(tikzpath, data, solution)
+function drawsolution(tikzpath::String, data::DataGVRP, routes::Array{Array{Int64}})
+
   open(tikzpath, "w") do f
-    write(f, "\\documentclass[crop,tikz]{standalone}\n\\begin{document}\n")
+    write(f,"\\documentclass[crop,tikz]{standalone}\n\\begin{document}\n")
+    write(f,"\\usetikzlibrary{arrows,positioning,automata,shadows,fit,shapes,calc,shapes.geometric}
+          \\tikzset{triangle_black/.style={regular polygon, regular polygon sides=3, minimum size=0.3cm, fill=black}}
+          \\tikzset{triangle/.style={regular polygon, regular polygon sides=3, minimum size=0.3cm, fill=white}}
+          \\tikzset{square/.style={regular polygon, regular polygon sides=4, minimum size=0.3cm, fill=white}}
+          \\tikzset{circufe/.style={circle,draw, minimum size=0.2cm, fill=white}}
+          \\tikzset{raio/.style={circle,draw, minimum size=1.45cm, fill=white}} 
+          \\tikzset{circle_new/.style={circle,draw, minimum size=0.2cm, fill=white}}   
+          ")
     # get limits to draw
     pos_x_vals = [i.pos_x for i in data.G′.V′]
     pos_y_vals = [i.pos_y for i in data.G′.V′]
-
-    if data.insType == "EUC_2D" || data.insType == "GEO"
-
-      if data.insType == "EUC_2D"
-        scale_fac = 1 / (max(maximum(pos_x_vals), maximum(pos_y_vals)) / 10)
-      elseif data.insType == "GEO"
-        scale_fac = 1 / (max(maximum(pos_x_vals), maximum(pos_y_vals)) / 10)
+    scale_fac = 1/(max(maximum(pos_x_vals),maximum(pos_y_vals))/10)
+    # draw
+    write(f,"\\begin{tikzpicture}\n\\tikzstyle{every node}=[circle, draw, fill=black!50, inner sep=0pt, minimum width=4pt]")
+    # nodes
+    # depot
+    for i in 1:length(data.G′.V′)
+      type = ""
+      id_vertex = data.G′.V′[i].id_vertex
+      if i == data.depot_id
+        type = "triangle_black"
+      elseif i in data.C
+        type = "square"
+      else
+        type = "triangle"
       end
-
-      write(f, "\\begin{tikzpicture}[thick, scale=1, every node/.style={scale=0.3}]\n")
-      for i in data.G′.V′
-        x_plot = scale_fac * i.pos_x
-        y_plot = scale_fac * i.pos_y
-        if i.id_vertex in data.F # plot balck vertices
-          write(f, "\t\\node[draw, line width=0.1mm, circle, fill=black, inner sep=0.05cm, text=white] (v$(i.id_vertex)) at ($(x_plot),$(y_plot)) {\\footnotesize $(i.id_vertex)};\n")
-        else
-          write(f, "\t\\node[draw, line width=0.1mm, circle, fill=white, inner sep=0.05cm] (v$(i.id_vertex)) at ($(x_plot),$(y_plot)) {\\footnotesize $(i.id_vertex)};\n")
-        end
-      end
-
-      for r in solution.routes
-        prev = r[1]
-        first = r[1]
-        edge_style = "-,line width=0.8pt"
-        for i in r[2:end]
-          e = (prev, i)
-          write(f, "\t\\draw[$(edge_style)] (v$(e[1])) -- (v$(e[2]));\n")
-          prev = i
-        end
-        write(f, "\t\\draw[$(edge_style)] (v$(first)) -- (v$(prev));\n")
-      end
-
-      write(f, "\\end{tikzpicture}\n")
-      write(f, "\\end{document}\n")
-    else
-      println("Draw funciton for $(data.insType) not defined yet!")
+      write(f, "\t\\node[$(type)] (v$(id_vertex)) at ($(scale_fac*pos_x_vals[i]),$(scale_fac*pos_y_vals[i])) {\\footnotesize $(id_vertex)};\n")
     end
-  end
-end
-
-function drawsolution2(tikzpath, data, optimizer, x, app)
-   open(tikzpath, "w") do f
-      write(f,"\\documentclass[crop,tikz]{standalone}\n\\begin{document}\n")
-      # get limits to draw
-      pos_x_vals = [i.pos_x for i in data.G′.V′]
-      pos_y_vals = [i.pos_y for i in data.G′.V′]
-      scale_fac = 1/(max(maximum(pos_x_vals),maximum(pos_y_vals))/10)
-      write(f,"\\begin{tikzpicture}[thick, scale=10, every node/.style={scale=0.3}]\n")
-      for i in data.G′.V′
-         x_plot = scale_fac*i.pos_x
-         y_plot = scale_fac*i.pos_y
-         if i.id_vertex == 1 # plot depot
-            write(f, "\t\\node[draw, line width=0.1mm, rectangle, fill=yellow, inner sep=0.05cm, scale=1.4] (v$(i.id_vertex)) at ($(x_plot),$(y_plot)) {\\footnotesize $(i.id_vertex)};\n")
-            # Uncomment to plot without vertex id
-            #write(f, "\t\\node[draw, rectangle, fill=yellow, scale=1.4] (v$(i.id_vertex)) at ($(x_plot),$(y_plot)) {};\n")
-         elseif i.id_vertex in data.C
-            write(f, "\t\\node[draw, line width=0.1mm, circle, fill=white, inner sep=0.05cm] (v$(i.id_vertex)) at ($(x_plot),$(y_plot)) {\\footnotesize $(i.id_vertex)};\n")
-            # Uncomment to plot without vertex id
-            #write(f, "\t\\node[draw, circle, fill=white] (v$(i.id_vertex)) at ($(x_plot),$(y_plot)) {};\n")
-         else
-            write(f, "\t\\node[draw, line width=0.1mm, circle, fill=red, inner sep=0.05cm] (v$(i.id_vertex)) at ($(x_plot),$(y_plot)) {\\footnotesize $(i.id_vertex)};\n")
-         end
+    # define colors
+    colors = [
+              "black", 
+              "red", 
+              "green", 
+              "blue", 
+              "cyan", 
+              "magenta", 
+              "yellow",
+              "orange",
+              "purple",
+              "black!50!gray", 
+              "red!50!gray", 
+              "green!50!gray", 
+              "blue!50!gray", 
+              "cyan!50!gray", 
+              "magenta!50!gray", 
+              "yellow!50!gray",
+              "orange!50!gray",
+              "purple!50!gray",
+             ]
+    color_index = 1
+    # get edges in F_0 visited multiple times
+    F_0_edges = Dict{Tuple{Int64,Int64}, Int64}()
+    F_0 = vcat(data.F, [data.depot_id])
+#    println("F_0:")
+#   [print("$(data.G′.V′[f].id_vertex) ") for f in F_0]
+#   println()
+#   [print("$(f) ") for f in F_0]
+#   println("\nC:")
+#   [print("$(data.G′.V′[f].id_vertex) ") for f in data.C]
+#   println()
+#   [print("$(f) ") for f in data.C]
+#   println()
+    for (i, j) in data.G′.E
+      if i in F_0 && j in F_0
+        # get number of times this edge is visited
+        count = 0
+        for route in routes
+          for k in 2:length(route)
+            if ed(route[k - 1], route[k]) == (i, j)
+              count = count + 1
+            end
+          end
+        end
+        #draw edge
+        color_index = 1
+        for route in routes
+          for k in 2:length(route)
+            if ed(route[k - 1], route[k]) == (i, j)
+              write(f, "\t\\path [$(colors[color_index]), draw,-latex] (v$(data.G′.V′[route[k - 1]].id_vertex)) edge [bend left = $(count*20)] (v$(data.G′.V′[route[k]].id_vertex));\n")
+#              println("($i, $j)) $(data.G′.V′[route[k - 1]].id_vertex) $(data.G′.V′[route[k]].id_vertex)")
+              count = count - 1
+            end
+          end
+          color_index = color_index + 1
+        end
       end
-      E, dim = edges(data), dimension(data)
-      for e in E
-         val = get_value(optimizer, x[e])
-         if val > 0.5
-            edge_style = "-,line width=0.8pt"
-            write(f, "\t\\draw[$(edge_style)] (v$(e[1])) -- (v$(e[2]));\n")
-         end
+    end
+    # get edges
+    color_index = 1
+    for (r, route) in enumerate(routes)
+      n = length(route)
+      for i in 2:n
+        e = (data.G′.V′[route[i - 1]].id_vertex, data.G′.V′[route[i]].id_vertex)
+#        println(e, " ($(route[i - 1]), $(route[i]))")
+        if !(route[i - 1] in F_0 && route[i] in F_0)
+          write(f, "\t\\path [$(colors[color_index]), draw,-latex] (v$(e[1])) edge (v$(e[2]));\n")
+        end
       end
-      # for r in solution.routes
-      #    #=prev = r[1] # Uncomment (and comment below) to hide edges with the depot
-      #    for i in r[2:end]
-      #       e = (prev,i)
-      #       write(f, "\t\\draw[-,line width=0.8pt] (v$(e[1])) -- (v$(e[2]));\n")
-      #       prev = i
-      #    end=#
-      #    prev = 0
-      #    for i in r
-      #       e = (prev,i)
-      #       # edge_style = (prev == 0) ? "dashed,-,line width=0.2pt,opacity=.2" : "-,line width=0.8pt"
-      #       edge_style = "-,line width=0.8pt"
-      #       write(f, "\t\\draw[$(edge_style)] (v$(e[1])) -- (v$(e[2]));\n")
-      #       prev = i
-      #    end
-      #    # write(f, "\t\\draw[dashed,-,line width=0.2pt,opacity=.2] (v0) -- (v$(prev));\n") 
-      #    write(f, "\t\\draw[-,line width=0.8pt] (v0) -- (v$(prev));\n") 
-      # end
-      write(f, "\\end{tikzpicture}\n")
-      write(f, "\\end{document}\n")
-   end   
+      color_index = color_index + 1
+    end
+    write(f, "\\end{tikzpicture}\n")
+    write(f, "\\end{document}\n")
+  end   
 end
