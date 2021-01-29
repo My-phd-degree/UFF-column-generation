@@ -1,9 +1,9 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.20 (TeX Live 2019/Debian) (preloaded format=pdflatex 2020.11.3)  29 JAN 2021 15:32
+This is pdfTeX, Version 3.14159265-2.6-1.40.20 (TeX Live 2019/Debian) (preloaded format=pdflatex 2020.11.3)  29 JAN 2021 18:21
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
-**mlsa_flow_35c4f51.000000B-P-n40-k5.tex
-(./mlsa_flow_35c4f51.000000B-P-n40-k5.tex
+**mlsa_flow_80c20f25.000000B-P-n101-k4.tex
+(./mlsa_flow_80c20f25.000000B-P-n101-k4.tex
 LaTeX2e <2020-02-02> patch level 2
 L3 programming layer <2020-02-14>
 (/usr/share/texlive/texmf-dist/tex/latex/standalone/standalone.cls
@@ -370,8 +370,8 @@ File: l3backend-pdfmode.def 2020-02-03 L3 backend support: PDF mode
 \l__kernel_color_stack_int=\count199
 \l__pdf_internal_box=\box57
 )
-(./mlsa_flow_35c4f51.000000B-P-n40-k5.aux)
-\openout1 = `mlsa_flow_35c4f51.000000B-P-n40-k5.aux'.
+No file mlsa_flow_80c20f25.000000B-P-n101-k4.aux.
+\openout1 = `mlsa_flow_80c20f25.000000B-P-n101-k4.aux'.
 
 LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 2.
 LaTeX Font Info:    ... okay on input line 2.
@@ -387,7 +387,6 @@ LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 2.
 LaTeX Font Info:    ... okay on input line 2.
 LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 2.
 LaTeX Font Info:    ... okay on input line 2.
-
 ABD: EveryShipout initializing macros
 (/usr/share/texlive/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
 [Loading MPS to PDF converter (version 2006.09.02).]
@@ -518,19 +517,19 @@ File: tikzlibrarycalc.code.tex 2020/01/08 v3.1.5b (3.1.5b)
 ) [1
 
 {/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}]
-(./mlsa_flow_35c4f51.000000B-P-n40-k5.aux) ) 
+(./mlsa_flow_80c20f25.000000B-P-n101-k4.aux) ) 
 Here is how much of TeX's memory you used:
- 15022 strings out of 481239
- 330200 string characters out of 5920377
- 598090 words of memory out of 5000000
- 30025 multiletter control sequences out of 15000+600000
+ 15633 strings out of 481239
+ 339874 string characters out of 5920377
+ 687764 words of memory out of 5000000
+ 30638 multiletter control sequences out of 15000+600000
  532637 words of font info for 25 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 68i,7n,83p,435b,752s stack positions out of 5000i,500n,10000p,200000b,80000s
-</usr/share/texlive/texmf-dist/font
-s/type1/public/amsfonts/cm/cmr8.pfb>
-Output written on mlsa_flow_35c4f51.000000B-P-n40-k5.pdf (1 page, 16811 bytes).
-
+ 68i,7n,83p,437b,786s stack positions out of 5000i,500n,10000p,200000b,80000s
+</usr/share/texlive/texmf-dist/fo
+nts/type1/public/amsfonts/cm/cmr8.pfb>
+Output written on mlsa_flow_80c20f25.000000B-P-n101-k4.pdf (1 page, 23618 bytes
+).
 PDF statistics:
  39 PDF objects out of 1000 (max. 8388607)
  18 compressed objects within 1 object stream
