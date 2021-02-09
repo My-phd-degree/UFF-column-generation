@@ -1,8 +1,14 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.20 (TeX Live 2019/Debian) (preloaded format=pdflatex 2020.11.3)  25 JAN 2021 12:44
+This is pdfTeX, Version 3.14159265-2.6-1.40.20 (TeX Live 2019/Debian) (preloaded format=pdflatex 2020.11.3)  28 JAN 2021 18:00
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
-**AS1_20c3sU10.tex
+**AS1_20c3sU10.tex AS1_20c3sU1.tex AS1_20c3sU2.tex AS1-3c3sU10.tex mlsa_flow_10
+c5f25.000000B-P-n16-k8.tex mlsa_flow_12c3f30.000000B-P-n16-k8.vrp.tex mlsa_flow
+_17c2f55.000000B-P-n20-k2.vrp.tex mlsa_flow_20c2f40.000000B-P-n23-k8.tex mlsa_f
+low_27c12f27.000000B-P-n40-k5.vrp.tex mlsa_flow_30c14f27.000000B-P-n45-k5.tex m
+lsa_flow_35c4f51.000000B-P-n40-k5.tex mlsa_flow_40c4f42.000000B-P-n45-k5.tex ml
+sa_flow_45c4f42.000000B-P-n50-k7.vrp.tex mlsa_flow_50c14f27.000000B-P-n65-k10.t
+ex mlsa_flow_63c6f36.000000B-P-n70-k10.tex
 (./AS1_20c3sU10.tex
 LaTeX2e <2020-02-02> patch level 2
 L3 programming layer <2020-02-14>
@@ -1212,7 +1218,7 @@ Here is how much of TeX's memory you used:
  27212 multiletter control sequences out of 15000+600000
  532637 words of font info for 25 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 68i,7n,64p,413b,673s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 68i,7n,64p,911b,673s stack positions out of 5000i,500n,10000p,200000b,80000s
 </us
 r/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb>
 Output written on AS1_20c3sU10.pdf (1 page, 13802 bytes).
