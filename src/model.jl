@@ -151,11 +151,12 @@ function build_model(data::DataGVRP)
   # Formulation
   gvrp = VrpModel()
   @variable(gvrp.formulation, x[e in E], Int)
-  @variable(gvrp.formulation, 2 * length(C) >= y[i in F] >= 0, Int)
+  @variable(gvrp.formulation, 2 * length(C) >= y[i in F´] >= 0, Int)
   @objective(gvrp.formulation, Min, sum(d(data, e) * x[e] for e in E))
   @constraint(gvrp.formulation, deg[i in C], sum(x[e] for e in δ(data, i)) == 2.0)
-  @constraint(gvrp.formulation, hotel_deg[i in F], sum(x[e] for e in δ(data, i)) == 2*y[i])
+  @constraint(gvrp.formulation, hotel_deg[i in F´], sum(x[e] for e in δ(data, i)) == 2*y[i])
   @constraint(gvrp.formulation, no_edge_between_afss[f in F], sum(x[(f, r)] for r in F if (f, r) in E) == 0.0)
+  @constraint(gvrp.formulation, y[F´[1]] >= 1)
 
 #  routes = [
 #         [0, 4, 11, 27, 17, 16, 0],
