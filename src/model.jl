@@ -125,6 +125,8 @@ function build_model(data::DataGVRP)
   C = data.C # Set of customers vertices
   F = data.F # Set of AFSs vertices
   T = data.T # Set of AFSs vertices
+  F´ = copy(F) 
+  pushfirst!(F´, data.depot_id)
 
   ed(i, j) = i < j ? (i, j) : (j, i)
 
@@ -154,7 +156,15 @@ function build_model(data::DataGVRP)
   @constraint(gvrp.formulation, deg[i in C], sum(x[e] for e in δ(data, i)) == 2.0)
   @constraint(gvrp.formulation, hotel_deg[i in F], sum(x[e] for e in δ(data, i)) == 2*y[i])
   @constraint(gvrp.formulation, no_edge_between_afss[f in F], sum(x[(f, r)] for r in F if (f, r) in E) == 0.0)
-  @constraint(gvrp.formulation, y[F[1]] >= 1)
+
+#  routes = [
+#         [0, 4, 11, 27, 17, 16, 0],
+#         [0, 18, 20, 28, 25, 0],
+#         [0, 19, 21, 13, 15, 23, 14, 12, 0],
+#         [0, 22, 26, 24, 0],
+#         [0, 29, 30, 10, 0],
+#        ]
+
 
 #  routes = [
 #           [0, 10, 12, 15, 11, 4, 0],
@@ -319,7 +329,7 @@ end
     end
 
     added_cuts = []
-    s = F[1]
+    s = data.depot_id
     for c in C
       maxFlow, flows, cut = SparseMaxFlowMinCut.find_maxflow_mincut(SparseMaxFlowMinCut.Graph(n, g), s, c)
       if (maxFlow / M) < (2 - 0.001) && !in(cut, added_cuts)

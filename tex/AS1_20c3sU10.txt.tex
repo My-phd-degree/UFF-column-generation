@@ -1,0 +1,62 @@
+\documentclass[crop,tikz]{standalone}
+\begin{document}
+\usetikzlibrary{arrows,positioning,automata,shadows,fit,shapes,calc,shapes.geometric}
+          \tikzset{triangle_black/.style={regular polygon, regular polygon sides=3, minimum size=0.3cm, fill=black}}
+          \tikzset{triangle/.style={regular polygon, regular polygon sides=3, minimum size=0.3cm, fill=white}}
+          \tikzset{square/.style={regular polygon, regular polygon sides=4, minimum size=0.3cm, fill=white}}
+          \tikzset{circufe/.style={circle,draw, minimum size=0.2cm, fill=white}}
+          \tikzset{raio/.style={circle,draw, minimum size=1.45cm, fill=white}} 
+          \tikzset{circle_new/.style={circle,draw, minimum size=0.2cm, fill=white}}   
+          \begin{tikzpicture}
+\tikzstyle{every node}=[circle, draw, fill=black!50, inner sep=0pt, minimum width=4pt]	\node[triangle_black] (v1) at (-19.63977854592513,9.531307113995016) {\footnotesize 1};
+	\node[triangle] (v2) at (-19.346879941885813,9.325399814017048) {\footnotesize 2};
+	\node[triangle] (v3) at (-19.536685361052353,10.0) {\footnotesize 3};
+	\node[triangle] (v4) at (-20.060906990080387,9.474241331786997) {\footnotesize 4};
+	\node[square] (v5) at (-19.473807025580474,9.892489501724302) {\footnotesize 5};
+	\node[square] (v6) at (-19.27579230725212,9.423967742522356) {\footnotesize 6};
+	\node[square] (v7) at (-19.694264209460986,9.685284171884716) {\footnotesize 7};
+	\node[square] (v8) at (-19.838358461948776,9.790653024163442) {\footnotesize 8};
+	\node[square] (v9) at (-19.53638637130681,9.26862734461429) {\footnotesize 9};
+	\node[square] (v10) at (-20.010121817259606,9.316724942393234) {\footnotesize 10};
+	\node[square] (v11) at (-19.346534814328717,9.885104841497473) {\footnotesize 11};
+	\node[square] (v12) at (-19.800332161729607,9.245362330964536) {\footnotesize 12};
+	\node[square] (v13) at (-19.297775346137,9.241150598830348) {\footnotesize 13};
+	\node[square] (v14) at (-19.261764891931843,9.827351629973663) {\footnotesize 14};
+	\node[square] (v15) at (-19.985331430030293,9.730798685803936) {\footnotesize 15};
+	\node[square] (v16) at (-19.411677602715137,9.62344559083501) {\footnotesize 16};
+	\node[square] (v17) at (-19.825583927074423,9.438526382598418) {\footnotesize 17};
+	\node[square] (v18) at (-19.880333631692192,9.33458089637852) {\footnotesize 18};
+	\node[square] (v19) at (-19.509389631098678,9.852765441551409) {\footnotesize 19};
+	\node[square] (v20) at (-19.619469634195696,9.244045762344802) {\footnotesize 20};
+	\node[square] (v21) at (-19.557773990392423,9.394561546659348) {\footnotesize 21};
+	\node[square] (v22) at (-19.596327409723067,9.39451311526255) {\footnotesize 22};
+	\node[square] (v23) at (-20.133024178384172,9.532490971463867) {\footnotesize 23};
+	\node[square] (v24) at (-19.510232327265587,9.233282486313964) {\footnotesize 24};
+	\path [blue, draw,-latex] (v1) edge [bend left = 20] (v4);
+	\path [black, draw,-latex] (v1) edge (v16);
+	\path [black, draw,-latex] (v16) edge (v14);
+	\path [black, draw,-latex] (v14) edge (v11);
+	\path [black, draw,-latex] (v11) edge (v5);
+	\path [black, draw,-latex] (v5) edge (v19);
+	\path [black, draw,-latex] (v19) edge (v1);
+	\path [red, draw,-latex] (v1) edge (v17);
+	\path [red, draw,-latex] (v17) edge (v18);
+	\path [red, draw,-latex] (v18) edge (v10);
+	\path [red, draw,-latex] (v10) edge (v12);
+	\path [red, draw,-latex] (v12) edge (v20);
+	\path [red, draw,-latex] (v20) edge (v22);
+	\path [red, draw,-latex] (v22) edge (v1);
+	\path [green, draw,-latex] (v1) edge (v6);
+	\path [green, draw,-latex] (v6) edge (v2);
+	\path [green, draw,-latex] (v2) edge (v13);
+	\path [green, draw,-latex] (v13) edge (v24);
+	\path [green, draw,-latex] (v24) edge (v9);
+	\path [green, draw,-latex] (v9) edge (v21);
+	\path [green, draw,-latex] (v21) edge (v1);
+	\path [blue, draw,-latex] (v4) edge (v23);
+	\path [blue, draw,-latex] (v23) edge (v15);
+	\path [blue, draw,-latex] (v15) edge (v8);
+	\path [blue, draw,-latex] (v8) edge (v7);
+	\path [blue, draw,-latex] (v7) edge (v1);
+\end{tikzpicture}
+\end{document}

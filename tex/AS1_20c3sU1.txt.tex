@@ -1,0 +1,65 @@
+\documentclass[crop,tikz]{standalone}
+\begin{document}
+\usetikzlibrary{arrows,positioning,automata,shadows,fit,shapes,calc,shapes.geometric}
+          \tikzset{triangle_black/.style={regular polygon, regular polygon sides=3, minimum size=0.3cm, fill=black}}
+          \tikzset{triangle/.style={regular polygon, regular polygon sides=3, minimum size=0.3cm, fill=white}}
+          \tikzset{square/.style={regular polygon, regular polygon sides=4, minimum size=0.3cm, fill=white}}
+          \tikzset{circufe/.style={circle,draw, minimum size=0.2cm, fill=white}}
+          \tikzset{raio/.style={circle,draw, minimum size=1.45cm, fill=white}} 
+          \tikzset{circle_new/.style={circle,draw, minimum size=0.2cm, fill=white}}   
+          \begin{tikzpicture}
+\tikzstyle{every node}=[circle, draw, fill=black!50, inner sep=0pt, minimum width=4pt]	\node[triangle_black] (v1) at (-19.63977854592513,9.531307113995016) {\footnotesize 1};
+	\node[triangle] (v2) at (-19.346879941885813,9.325399814017048) {\footnotesize 2};
+	\node[triangle] (v3) at (-19.536685361052353,10.0) {\footnotesize 3};
+	\node[triangle] (v4) at (-20.060906990080387,9.474241331786997) {\footnotesize 4};
+	\node[square] (v5) at (-19.330127189733417,9.161192314163493) {\footnotesize 5};
+	\node[square] (v6) at (-20.001701774361493,9.71401721948484) {\footnotesize 6};
+	\node[square] (v7) at (-19.55265143880792,9.909281257497662) {\footnotesize 7};
+	\node[square] (v8) at (-20.078218464668062,9.513006115769288) {\footnotesize 8};
+	\node[square] (v9) at (-20.087579460418272,9.525252365731937) {\footnotesize 9};
+	\node[square] (v10) at (-19.964707536817283,9.999909554176401) {\footnotesize 10};
+	\node[square] (v11) at (-19.693574410529497,9.207029932152722) {\footnotesize 11};
+	\node[square] (v12) at (-20.014784156528847,9.334134724353065) {\footnotesize 12};
+	\node[square] (v13) at (-19.423544055235382,9.281859304020736) {\footnotesize 13};
+	\node[square] (v14) at (-19.48195728709767,9.787976549567343) {\footnotesize 14};
+	\node[square] (v15) at (-19.760019220376172,9.214405012542821) {\footnotesize 15};
+	\node[square] (v16) at (-19.932653631211842,9.160314086432843) {\footnotesize 16};
+	\node[square] (v17) at (-19.8738275286613,9.777277823388754) {\footnotesize 17};
+	\node[square] (v18) at (-19.350162708635555,9.946892507489007) {\footnotesize 18};
+	\node[square] (v19) at (-19.321934325820603,9.905759349638448) {\footnotesize 19};
+	\node[square] (v20) at (-19.67348653199063,9.410623714232266) {\footnotesize 20};
+	\node[square] (v21) at (-19.293497594228526,9.543075905401938) {\footnotesize 21};
+	\node[square] (v22) at (-19.27370980787673,9.45577274977721) {\footnotesize 22};
+	\node[square] (v23) at (-19.681496998853333,9.477500731845039) {\footnotesize 23};
+	\node[square] (v24) at (-19.886006973201678,9.4391281889555) {\footnotesize 24};
+	\path [blue, draw,-latex] (v1) edge [bend left = 20] (v3);
+	\path [black, draw,-latex] (v1) edge (v7);
+	\path [black, draw,-latex] (v7) edge (v3);
+	\path [black, draw,-latex] (v3) edge (v18);
+	\path [black, draw,-latex] (v18) edge (v19);
+	\path [black, draw,-latex] (v19) edge (v14);
+	\path [black, draw,-latex] (v14) edge (v1);
+	\path [red, draw,-latex] (v1) edge (v13);
+	\path [red, draw,-latex] (v13) edge (v5);
+	\path [red, draw,-latex] (v5) edge (v2);
+	\path [red, draw,-latex] (v2) edge (v22);
+	\path [red, draw,-latex] (v22) edge (v21);
+	\path [red, draw,-latex] (v21) edge (v1);
+	\path [green, draw,-latex] (v1) edge (v6);
+	\path [green, draw,-latex] (v6) edge (v17);
+	\path [green, draw,-latex] (v17) edge (v1);
+	\path [blue, draw,-latex] (v3) edge (v10);
+	\path [blue, draw,-latex] (v10) edge (v1);
+	\path [cyan, draw,-latex] (v1) edge (v20);
+	\path [cyan, draw,-latex] (v20) edge (v11);
+	\path [cyan, draw,-latex] (v11) edge (v15);
+	\path [cyan, draw,-latex] (v15) edge (v16);
+	\path [cyan, draw,-latex] (v16) edge (v23);
+	\path [cyan, draw,-latex] (v23) edge (v1);
+	\path [magenta, draw,-latex] (v1) edge (v9);
+	\path [magenta, draw,-latex] (v9) edge (v8);
+	\path [magenta, draw,-latex] (v8) edge (v12);
+	\path [magenta, draw,-latex] (v12) edge (v24);
+	\path [magenta, draw,-latex] (v24) edge (v1);
+\end{tikzpicture}
+\end{document}

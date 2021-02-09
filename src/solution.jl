@@ -108,6 +108,7 @@ function checksolution(data::DataGVRP, solution)
       a, b = route[i - 1], route[i]
       #update resources
       consumedFuel = consumedFuel + f(data, ed(a, b))
+      #      consumedTime = consumedTime + t(data, ed(a, b))
       consumedTime = consumedTime + t(data, ed(a, b))
       #error checking
       consumedFuel > data.β && error("No fuel in $b: $consumedFuel")
@@ -120,6 +121,9 @@ function checksolution(data::DataGVRP, solution)
         nTimesCustomersVisited[b] > 1 && error("Customer $b visited more than once")
       end
     end
+  end
+  for i in data.C
+    nTimesCustomersVisited[i] == 0 && error("Customer $(data.G′.V′[i].id_vertex) is not being visited")
   end
 end
 
