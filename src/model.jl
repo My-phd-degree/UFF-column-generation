@@ -1,118 +1,8 @@
+include("gvrp_afs_tree.jl")
+
 using CPLEX
 
-function cplex(data::DataGVRP)
-  E = edges(data) # set of edges of the input graph G′
-  n = nb_vertices(data)
-  V = [i for i in 1:n] # set of vertices of the input graph G′
-  V′ = [i for i in 0:n] # V ⋃ {0}, where 0 is a dummy vertex
-
-  β = data.β
-  C = data.C # Set of customers vertices
-  F = data.F # Set of AFSs vertices
-  T = data.T # Set of AFSs vertices
-
-  ed(i, j) = i < j ? (i, j) : (j, i)
-
-  gvrp_ = Model(solver = CplexSolver())
-  F´ = deepcopy(F) 
-  popfirst!(F´)
-  @variable(gvrp_, x[e in E] >= 0, Int)
-  @variable(gvrp_, y[i in F] >= 0, Int)
-  @objective(gvrp_, Min, sum(d(data, e) * x[e] for e in E))
-  @constraint(gvrp_, deg[i in C], sum(x[e] for e in δ(data, i)) == 2.0)
-  @constraint(gvrp_, hotel_deg[i in F], sum(x[e] for e in δ(data, i)) == 2*y[i])
-  @constraint(gvrp_, no_edge_between_afss[f in F´], sum(x[(f, r)] for r in F´ if (f, r) in data.G′.E) == 0.0)
-  @constraint(gvrp_, y[F[1]] >= 1)
-  time_user_cut_added_cuts = []
-  time_lazy_added_cuts = []
-  fuel_user_cut_added_cuts = []
-  fuel_lazy_added_cuts = []
-  function separa(cb, corte)
-    x´ = Dict{Tuple{Int64,Int64},Float64}(e => getvalue(x[e]) for e in E)
-    # fuel separation
-    # dfs
-    """
-    edges = []
-    function dfs(i::Int64)
-      for e in δ(data, i) 
-        if x´[e] > 0.0001 
-          if e[1] in F && e[1] != i
-            # get edges
-               
-          end
-          push!(edge, e)
-        end
-      end
-    end
-    for f in F
-    end
-    """
-    # time separation
-    M = Model(solver = CplexSolver(
-                                   CPX_PARAM_MIPDISPLAY=0,
-                                   CPX_PARAM_SCRIND=0
-                                  ))
-    @variable(M, 0 <= y[1:n] <= 1, Int)
-    @variable(M, 0 <= w[e in E] <= 1, Int)
-    @variable(M, 0 <= z[e in E] <= 1, Int)
-    @objective(M, Max, (2/T) * sum(z[e] * x´[e] * t(data, e) for e in E) - sum(w[e] * x´[e] for e in E))
-    @constraint(M, update_z_1[e in E], z[e] >= y[e[1]])
-    @constraint(M, update_z_2[e in E], z[e] >= y[e[2]])
-    @constraint(M, update_z_3[(i, j) in E], y[i] + y[j] >= z[(i, j)])
-    @constraint(M, update_w_1[(i, j) in E], w[(i, j)] >= y[i] - y[j])
-    @constraint(M, update_w_2[(i, j) in E], w[(i, j)] >= y[j] - y[i])
-    @constraint(M, update_w_3[(i, j) in E], 2 - (y[i] + y[j]) >= w[(i, j)])
-    @constraint(M, update_w_4[(i, j) in E], y[i] + y[j] >= w[(i, j)])
-    @constraint(M, y[F[1]] == 0 )
-    @constraint(M, sum(y[i] for i in C) >= 1)
-    solve(M)
-    # valid set
-    if getobjectivevalue(M) > 0.001
-      y´ = getvalue(y)
-      w´ = getvalue(w)
-      z´ = getvalue(z)
-      # get bipartition
-      setIn, setOut = [], []
-      [y´[i] > 0.5 ? push!(setIn, i) : push!(setOut, i) for i in 1:n]
-
-      #       println(y´)
-      #      println(w´)
-      #      println(z´)
-      #       println("S: ", setIn)
-      #       println("V\\S: ", setOut)
-      #       println([x[e] for e in E if w´[e] > 0.5])
-      #      println()
-      #      println([x[e] for e in E if z´[e] > 0.5])
-      lhs_vars = vcat([x[e] for e in E if w´[e] > 0.5], [x[e] for e in E if z´[e] > 0.5])
-      lhs_coeff = vcat([1.0 for e in E if w´[e] > 0.5], [- t(data, e) * 2/T for e in E if z´[e] > 0.5])
-
-      if corte
-        if setIn in time_user_cut_added_cuts
-          println("=======>REPEATED USER CUT!!!")
-        end
-        push!(time_user_cut_added_cuts, setIn)
-        @usercut(cb, sum(lhs_vars[i] * lhs_coeff[i] for i in 1:length(lhs_vars)) >= 0.0)
-        unsafe_store!(cb.userinteraction_p, convert(Cint,2), 1)
-      else
-        if setIn in time_lazy_added_cuts
-          println("=======>REPEATED LAZY CUT!!!")
-        end
-        push!(time_lazy_added_cuts, setIn)
-        @lazyconstraint(cb, sum(lhs_vars[i] * lhs_coeff[i] for i in 1:length(lhs_vars)) >= 0.0)
-      end
-    end
-  end
-  function separa_corte(cb)
-    separa(cb, true)
-  end
-  addcutcallback(gvrp_, separa_corte)
-  function separa_restr(cb)
-    separa(cb, false)
-  end
-  addlazycallback(gvrp_, separa_restr)
-  solve(gvrp_)
-  obj = getobjectivevalue(gvrp_)
-end
+ed(i, j) = i < j ? (i, j) : (j, i)
 
 function build_model(data::DataGVRP)
   E = edges(data) # set of edges of the input graph G′
@@ -127,8 +17,6 @@ function build_model(data::DataGVRP)
   T = data.T # Set of AFSs vertices
   F´ = copy(F) 
   pushfirst!(F´, data.depot_id)
-
-  ed(i, j) = i < j ? (i, j) : (j, i)
 
 #println("Customers ")
 #for i in data.C
@@ -155,23 +43,20 @@ function build_model(data::DataGVRP)
   @objective(gvrp.formulation, Min, sum(d(data, e) * x[e] for e in E))
   @constraint(gvrp.formulation, deg[i in C], sum(x[e] for e in δ(data, i)) == 2.0)
   @constraint(gvrp.formulation, hotel_deg[i in F´], sum(x[e] for e in δ(data, i)) == 2*y[i])
-  @constraint(gvrp.formulation, no_edge_between_afss[f in F], sum(x[(f, r)] for r in F if (f, r) in E) == 0.0)
+  if data.non_consec
+    @constraint(gvrp.formulation, no_edge_between_afss[f in F], sum(x[(f, r)] for r in F if (f, r) in E) == 0.0)
+  end
   @constraint(gvrp.formulation, y[F´[1]] >= 1)
 
-#  routes = [
-#         [0, 4, 11, 27, 17, 16, 0],
-#         [0, 18, 20, 28, 25, 0],
-#         [0, 19, 21, 13, 15, 23, 14, 12, 0],
-#         [0, 22, 26, 24, 0],
-#         [0, 29, 30, 10, 0],
-#        ]
-
 
 #  routes = [
-#           [0, 10, 12, 15, 11, 4, 0],
-#           [0, 7, 13, 9, 7, 14, 7, 0],
-#           [0, 7, 16, 5, 7, 6, 0],
-#           [0, 19, 7, 2, 8, 17, 3, 10, 1, 0],
+#           [0, 12, 5, 10, 39, 10, 49, 9, 50, 38, 50, 21, 2, 0],
+#           [0, 6, 23, 48, 23, 7, 23, 24, 23, 0],
+#           [0, 32, 31, 8, 31, 28, 31, 26, 31, 1, 32, 27, 0],
+#           [0, 18, 13, 41, 40, 19, 42, 19, 4, 18, 0],
+#           [0, 32, 22, 2, 35, 3, 35, 36, 35, 20, 2, 29, 2, 0, ],
+#           [0, 12, 37, 12, 17, 12, 47, 18, 25, 18, 14, 18, 0],
+#           [0, 46, 12, 45, 15, 44, 45, 33, 10, 30, 34, 50, 16, 11, 32, 0],
 #          ]
 
 if @isdefined routes
@@ -258,12 +143,14 @@ end
 
     #edges
     for (i, j) in E
-      if i in F && j in F
+      if i in F && j in F && data.non_consec
          continue
        end
       # add arcs i - > j
       arc_id = nothing
-      if j in F
+      if i in F && j in F
+        arc_id = add_arc!(G, afssOut[i], afssIn[j])
+      elseif j in F
         arc_id = add_arc!(G, i, afssIn[j])
       elseif i in F
         arc_id = add_arc!(G, afssOut[i], j)
@@ -275,7 +162,9 @@ end
       set_arc_consumption!(G, arc_id, time_res_id, t(data,(i,j)))
       # add arcs j - > i
       arc_id = nothing
-      if j in F
+      if i in F && j in F
+        arc_id = add_arc!(G, afssOut[j], afssIn[i])
+      elseif j in F
         arc_id = add_arc!(G, afssOut[j], i)
       elseif i in F
         arc_id = add_arc!(G, j, afssIn[i])
@@ -434,5 +323,5 @@ end
     """
   end
 #  add_cut_callback!(gvrp, maxflow_mincut_time_callback, "mincuttime")
-  return (gvrp, x)
+  return (gvrp, x, y)
 end

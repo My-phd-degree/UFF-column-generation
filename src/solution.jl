@@ -5,71 +5,120 @@ end
 
 ed(i, j) = i < j ? (i, j) : (j, i)
 
-# build Solution from the variables x
-function getsolution(data::DataGVRP, optimizer::VrpOptimizer, x, objval, app::Dict{String,Any})
+# build Solution from the variables x and y
+function getsolution(data::DataGVRP, optimizer::VrpOptimizer, x, y, objval, app::Dict{String,Any})
   objval = 0.0
   routes = []
   E, dim = edges(data), dimension(data)
 
-#  println("Num of paths $(get_number_of_positive_paths(optimizer))")
-  for i in 1:get_number_of_positive_paths(optimizer)
-    λ = get_value(optimizer, i)
-    if λ >= 0.001 && λ <= 1 - 0.001
-      println("Frac λ with $λ")
+  E_weights = Dict{Tuple{Int64, Float64}, Float64}()
+  for e in E
+    if get_value(optimizer, x[e]) > 0.001
+      E_weights[e] = get_value(optimizer, x[e])
     end
+  end
 
-    #valid λ
-    if λ > 1 - 0.001
-      #get λ used edges
-      vars = [x[e] for e in E]
-      E_vals = get_values(optimizer, vars, i)
-      E_weights = Dict{Tuple{Int64, Float64}, Int64}()
-      #get route
-      for i in 1:length(E)
-        e = E[i]
-        e_val = E_vals[i]
-        #        if e_val > 0.001
-        #          println("$(e) : $(e_val)")
-        #        end
-        E_weights[e] = e_val
-      end
+  #solve MIP model to get routes
+  nRoutes = Int64(floor(sum(E_weights[e] for e in δ(data, data.depot_id) if e in keys(E_weights)) + 0.5))
+  M = [i for i in 1:nRoutes]
+  V = [i for i in 1:length(data.G′.V′)]
+  A::Array{Tuple{Int64,Int64}} = vcat([e for e in keys(E_weights)], [(j, i) for (i, j) in keys(E_weights)])
+  δ⁺(i) = [(j, k) for (j, k) in A if j == i]
+  δ⁻(i) = [(j, k) for (j, k) in A if k == i]
+  ed(i, j) = i < j ? (i, j) : (j, i)
 
-      #get route
-      function getRoute(i::Int64, E_weights::Dict{Tuple{Int64, Float64}, Int64}, route::Array{Int64})
-        if i == data.depot_id
-          feasible = true
-          for (e, weight) in E_weights
-            if weight > 0.001
-              feasible = false
-            end
-          end  
-          return feasible
+
+#  println(E_weights)
+# println("M: ", M)
+# println("V: ", V)
+# println("A: ", A)
+# for i in V
+#   println("δ⁺($i): ", δ⁺(i))
+#   println("δ⁻($i): ", δ⁻(i))
+# end
+
+  vrp = Model(solver = CplexSolver())
+  @variable(vrp, 1 >= x´[k in M, a in A] >= 0, Int)
+  @constraint(vrp, deg[k in M, i in V], sum(x´[k, a] for a in δ⁺(i)) == sum(x´[k, a] for a in δ⁻(i)))
+  @constraint(vrp, edge_flow[(i, j) in keys(E_weights)], sum(x´[k, (i, j)] + x´[k, (j, i)] for k in M) == get_value(optimizer, x[(i, j)]))
+  @constraint(vrp, route_used_at_most_once[k in M], sum(x´[k, a] for a in δ⁺(data.depot_id)) <= 1.0)
+  @constraint(vrp, route_time_limit[k in M], sum(t(data, ed(a[1], a[2])) * x´[k, a] for a in A) <= data.T)
+  @constraint(vrp, route_order[k in M], sum(t(data, ed(a[1], a[2])) * x´[k, a] for a in A) <= data.T)
+
+  #callback
+  function separa(cb, corte)
+    x´´ = [Dict{Tuple{Int64,Int64},Float64}(a => getvalue(x´[k, a]) for a in A) for k in M]
+    # dfs
+    function dfs(nodes::Array{Int64}, k::Int64, i::Int64)
+      for a in δ⁺(i) 
+        j = a[2]
+        if x´´[k][a] > 0.001 && !(j in nodes)
+          push!(nodes, j)
+          dfs(nodes, k, j)
         end
-        for e in δ(data, i)
-          if E_weights[e] > 0.001
-            j = e[1] == i ? e[2] : e[1]
-            E_weights[e] = E_weights[e] - 1
-            push!(route, j)
-            if getRoute(j, E_weights, route)
-              return true
+      end
+    end
+    for i in data.C
+      for k in M
+        component = [i]
+        dfs(component, k, i)
+        if !(data.depot_id in component) && length(component) > 1
+#          println(component)
+          componentCustomers = [i for i in data.C if i in component]
+          cutArcs = [x´[k, a] for j in component for a in δ⁺(j) if !(a[2] in component)]
+          for i in componentCustomers
+            customerInArcs = [x´[k, a] for a in δ⁻(i) if a[1] in component]
+            lhs_vars = vcat(cutArcs, customerInArcs)
+            lhs_coeff = vcat([1.0 for a in cutArcs], [-1.0 for a in customerInArcs])
+            if corte
+              @usercut(cb, sum(lhs_vars[i] * lhs_coeff[i] for i in 1:length(lhs_vars)) >= 0.0)
+              unsafe_store!(cb.userinteraction_p, convert(Cint,2), 1)
+            else
+              @lazyconstraint(cb, sum(lhs_vars[i] * lhs_coeff[i] for i in 1:length(lhs_vars)) >= 0.0)
             end
-            E_weights[e] = E_weights[e] + 1
-            pop!(route)
           end
         end
-        return false
       end
+    end
+  end
+  function separa_corte(cb)
+    separa(cb, true)
+  end
+  addcutcallback(vrp, separa_corte)
+  function separa_restr(cb)
+    separa(cb, false)
+  end
+  addlazycallback(vrp, separa_restr)
+  solve(vrp)
 
-      route = [data.depot_id]
-      for e in δ(data, data.depot_id)
-        if E_weights[e] > 0.001
-          j = e[1] == data.depot_id ? e[2] : e[1]
-          E_weights[e] = E_weights[e] - 1
-          push!(route, j)
-          getRoute(j, E_weights, route)
-          break
+  #get routes
+  x´´ = [Dict{Tuple{Int64,Int64},Float64}(a => getvalue(x´[k, a]) for a in A if getvalue(x´[k, a]) > 0.5) for k in M]
+  function dfs(route::Array{Int64}, weights::Dict{Tuple{Int64,Int64}, Float64}, i::Int64)
+    if i == data.depot_id && length(weights) == 0
+      return true
+    end
+    for a in δ⁺(i)
+      weight = a in keys(weights) ? weights[a] : 0.0
+      if weight > 0.5
+#        println("trying with $route")
+        push!(route, a[2])
+        delete!(weights, a)
+        if dfs(route, weights, a[2])
+          return true
         end
+#        println("failed with $route")
+        pop!(route)
+        weights[a] = weight
       end
+    end
+    return false
+  end
+  for k in M
+#    println("Route ", k)
+    route = [data.depot_id]
+    dfs(route, x´´[k], data.depot_id)
+    if length(route) > 2
+#      println(route)
       push!(routes, route)
     end
   end

@@ -20,6 +20,7 @@ mutable struct DataGVRP
     depot_id ::Int
     coord::Bool # instance with NODE_COORD_SECTION
     round::Bool # Is the distance matrix rounded?
+    non_consec::Bool # if the instance must be solved without using edges between AFSs
     F::Array{Int64} # AFSs nodes
     C::Array{Int64} # Customers nodes
     β::Float64 # Total distance between two consecutive black vertices
@@ -51,7 +52,8 @@ contains(p, s) = findnext(s, p, 1) != nothing
 
 function read_Andelmin_Bartolini_Instance(app::Dict{String,Any})
     G′ = InputGraph([], [], Dict())
-    data = DataGVRP(G′, 1, true, false, [], [], 0.0, 0.0, 0.0, 0.0)
+    data = DataGVRP(G′, 1, true, false, false, [], [], 0.0, 0.0, 0.0, 0.0)
+    haskey(app, "non-consec") && error("The instances of Andelmin and Bartolini requires edges between AFSs")
     sepChar = ' '
     open(app["instance"]) do f
       # Ignore header and get paper default values
@@ -133,8 +135,7 @@ end
 
 function readEMHInstance(app::Dict{String,Any})
     G′ = InputGraph([], [], Dict())
-    data = DataGVRP(G′, 1, true, false, [], [], 0.0, 0.0, 0.0, 0.0)
-
+    data = DataGVRP(G′, 1, true, false, true, [], [], 0.0, 0.0, 0.0, 0.0)
     open(app["instance"]) do f
       # Ignore header
       readline(f)
@@ -208,7 +209,8 @@ end
 
 function readMatheusInstance(app::Dict{String,Any})
     G′ = InputGraph([], [], Dict())
-    data = DataGVRP(G′, 1, true, false, [], [], 0.0, 0.0, 0.0, 0.0)
+    data = DataGVRP(G′, 1, true, false, false, [], [], 0.0, 0.0, 0.0, 0.0)
+    data.non_consec = haskey(app, "non-consec") && app["non-consec"]
     sepChar = ';'
     open(app["instance"]) do f
       # vehicle data
@@ -294,7 +296,7 @@ function readMatheusInstance(app::Dict{String,Any})
 end
 
 edges(data::DataGVRP) = data.G′.E # return set of arcs
-d(data,e) = (e[1] != e[2]) ? data.G′.cost[e] : 0.0 # cost of the edge e
+d(data,e) = e in data.G′.E ? ((e[1] != e[2]) ? data.G′.cost[e] : 0.0) : typemax(Float64) # cost of the edge e
 f(data, e) = d(data, e) * data.ρ # fuel of the arc a 
 t(data, e) = (d(data, e) / data.ε) + (data.G′.V′[e[1]].service_time + data.G′.V′[e[2]].service_time)/2.0 # time of the arc a 
 dimension(data::DataGVRP) = length(data.G′.V′) # return number of vertices

@@ -3,6 +3,7 @@ using VrpSolver, JuMP, ArgParse
 include("data.jl")
 include("model.jl")
 include("solution.jl")
+include("preprocessings.jl")
 include("SparseMaxFlowMinCut.jl")
 
 function parse_commandline(args_array::Array{String,1}, appfolder::String)
@@ -13,6 +14,9 @@ function parse_commandline(args_array::Array{String,1}, appfolder::String)
             help = "Instance file path"
         "--preprocessings"
             help = "Instance edges preprocessings"
+        "--non-consec" 
+            help = "If the instance must be solved without using edges between AFSs"
+            action = :store_true
         "--cfg", "-c"
             help = "Configuration file path"
             default = "$appfolder/../config/BWTSP.cfg"
@@ -70,7 +74,7 @@ function run_gvrp(app::Dict{String,Any})
 
   solution_found = false
   if !app["nosolve"]
-    (model, x) = build_model(data)
+    (model, x, y) = build_model(data)
 
     # enum_paths, complete_form = get_complete_formulation(model, app["cfg"])
     # complete_form.solver = CplexSolver() # set MIP solver
@@ -85,7 +89,7 @@ function run_gvrp(app::Dict{String,Any})
     (status, solution_found) = optimize!(optimizer)
 
     if solution_found
-      sol = getsolution(data, optimizer, x, get_objective_value(optimizer), app)
+      sol = getsolution(data, optimizer, x, y, get_objective_value(optimizer), app)
     end
   end
   println("########################################################")
