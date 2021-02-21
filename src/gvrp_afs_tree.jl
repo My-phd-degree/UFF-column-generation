@@ -24,15 +24,17 @@ function calculateGVRP_AFS_Tree(data::DataGVRP)
     while !isempty(q)
       curr = popfirst!(q);
       for r in F0
-        cost = d(data, ed(curr, r))
-        time = t(data, ed(curr, r))
-        if fuel(data, ed(curr, r)) <= data.β && 
-          pairCosts[(f, curr)] + cost < pairCosts[(f, r)] && 
-          pairTimes[(f, curr)] + time < pairTimes[(f, r)] 
-          pairCosts[(f, r)] = pairCosts[(f, curr)] + cost
-          pairTimes[(f, r)] = pairTimes[(f, curr)] + time
-          pairPreds[(f, r)] = curr
-          push!(q, r)
+        if ed(curr, r) in data.G′.E
+          cost = d(data, ed(curr, r))
+          time = t(data, ed(curr, r))
+          if fuel(data, ed(curr, r)) <= data.β && 
+            pairCosts[(f, curr)] + cost < pairCosts[(f, r)] && 
+            pairTimes[(f, curr)] + time < pairTimes[(f, r)] 
+            pairCosts[(f, r)] = pairCosts[(f, curr)] + cost
+            pairTimes[(f, r)] = pairTimes[(f, curr)] + time
+            pairPreds[(f, r)] = curr
+            push!(q, r)
+          end
         end
       end
     end
