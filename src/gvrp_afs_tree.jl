@@ -18,8 +18,8 @@ function calculateGVRP_AFS_Tree(data::DataGVRP)
     for r in F0
       pairPreds[(f, r)] = r
     end
-    pairTimes[(f, f)] = 0.0;
-    pairCosts[(f, f)] = 0.0;
+    pairTimes[(f, f)] = 0.0
+    pairCosts[(f, f)] = 0.0
     q = [f]
     while !isempty(q)
       curr = popfirst!(q);
@@ -42,4 +42,15 @@ function calculateGVRP_AFS_Tree(data::DataGVRP)
   times = Dict{Int64,Float64}(i => pairTimes[(data.depot_id, i)] for i in F0)
   pred = Dict{Int64,Int64}(i => pairPreds[(data.depot_id, i)] for i in F0)
   return GVRP_AFS_Tree(F0, times, pred, pairCosts, pairTimes, pairPreds)
+end
+
+function getAFSTreePath(f::Int64, r::Int64, gvrp_afs_tree::GVRP_AFS_Tree)
+  #dfs
+  path = [r];
+  r′ = r
+  while r′ != f
+    r′ = gvrp_afs_tree.pairPreds[(f, r′)]
+    push!(path, r′)
+  end
+  return path;
 end
