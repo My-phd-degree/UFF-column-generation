@@ -52,5 +52,5 @@ function getAFSTreePath(f::Int64, r::Int64, gvrp_afs_tree::GVRP_AFS_Tree)
     r′ = gvrp_afs_tree.pairPreds[(f, r′)]
     push!(path, r′)
   end
-  return path;
+  return reverse(path);
 end

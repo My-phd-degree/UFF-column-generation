@@ -4,7 +4,7 @@ using CPLEX
 
 ed(i, j) = i < j ? (i, j) : (j, i)
 
-function build_model(data::DataGVRP)
+function build_model_y(data::DataGVRP, adjC₀::Array{Array{Int64}})
   E = edges(data) # set of edges of the input graph G′
   n = nb_vertices(data)
   V = [i for i in 1:n] # set of vertices of the input graph G′
@@ -15,9 +15,6 @@ function build_model(data::DataGVRP)
   C = data.C # Set of customers vertices
   F = data.F # Set of AFSs vertices
   T = data.T # Set of AFSs vertices
-  F´ = copy(F) 
-  pushfirst!(F´, data.depot_id)
-
 #println("Customers ")
 #for i in data.C
 #  println(i, " ", data.G′.V′[i], ", δ($i) = $(δ(data, i))")
@@ -35,11 +32,12 @@ function build_model(data::DataGVRP)
 # for (i, j) in E
 #   println("d(($i, $j)) = ", d(data, (i, j)), " f(($i, $j)) = ", f(data, (i, j)), " t(($i, $j)) = ", t(data, (i, j)))
 # end
-  
+ 
   # Formulation
   gvrp = VrpModel()
   @variable(gvrp.formulation, x[e in E], Int)
-  @variable(gvrp.formulation, 2 * length(C) >= y[i in F´] >= 0, Int)
+  @variable(gvrp.formulation, w, Int)
+  @variable(gvrp.formulation, 2 >= y[p in P] >= 0, Int)
   @objective(gvrp.formulation, Min, sum((d(data, (i, j)) * x[(i, j)] for (i, j) in E)))
   @constraint(gvrp.formulation, deg[i in C], sum(x[e] for e in δ(data, i)) == 2.0)
   @constraint(gvrp.formulation, hotel_deg[i in F´], sum(x[e] for e in δ(data, i)) == 2*y[i])

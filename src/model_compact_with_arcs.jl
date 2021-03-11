@@ -2,9 +2,10 @@ include("gvrp_afs_tree.jl")
 
 using CPLEX
 
-ed(i, j) = i < j ? (i, j) : (j, i)
+#ed(i, j) = i < j ? (i, j) : (j, i)
 
-function build_model(data::DataGVRP)
+function build_model_compact_with_arcs(data::DataGVRP)
+  ed(i, j) = (i, j) in edges(data) ? (i, j) : (i < j ? (i, j) : (j, i))
   E = edges(data) # set of edges of the input graph G′
   n = nb_vertices(data)
   V = [i for i in 1:n] # set of vertices of the input graph G′
@@ -40,9 +41,10 @@ function build_model(data::DataGVRP)
   gvrp = VrpModel()
   @variable(gvrp.formulation, x[e in E], Int)
   @variable(gvrp.formulation, 2 * length(C) >= y[i in F´] >= 0, Int)
-  @objective(gvrp.formulation, Min, sum((d(data, (i, j)) * x[(i, j)] for (i, j) in E)))
+  @objective(gvrp.formulation, Min, sum((d(data, (i, j)) + (data.G′.V′[i].weight + data.G′.V′[j].weight)/2.0) * x[(i, j)] for (i, j) in E))
   @constraint(gvrp.formulation, deg[i in C], sum(x[e] for e in δ(data, i)) == 2.0)
   @constraint(gvrp.formulation, hotel_deg[i in F´], sum(x[e] for e in δ(data, i)) == 2*y[i])
+  @constraint(gvrp.formulation, arcs[i in F], sum(x[a] for a in δ⁺(data, i)) == sum(x[a] for a in δ⁻(data, i)))
   if data.non_consec
     @constraint(gvrp.formulation, no_edge_between_afss[f in F], sum(x[(f, r)] for r in F if (f, r) in E) == 0.0)
   end
@@ -161,19 +163,21 @@ end
       set_arc_consumption!(G, arc_id, fuel_res_id, f(data,(i,j)))
       set_arc_consumption!(G, arc_id, time_res_id, t(data,(i,j)))
       # add arcs j - > i
-      arc_id = nothing
-      if i in F && j in F
-        arc_id = add_arc!(G, afssOut[j], afssIn[i])
-      elseif j in F
-        arc_id = add_arc!(G, afssOut[j], i)
-      elseif i in F
-        arc_id = add_arc!(G, j, afssIn[i])
-      else
-        arc_id = add_arc!(G, j, i)
+      if !((j, i) in E)
+        arc_id = nothing
+        if i in F && j in F
+          arc_id = add_arc!(G, afssOut[j], afssIn[i])
+        elseif j in F
+          arc_id = add_arc!(G, afssOut[j], i)
+        elseif i in F
+          arc_id = add_arc!(G, j, afssIn[i])
+        else
+          arc_id = add_arc!(G, j, i)
+        end
+        add_arc_var_mapping!(G, arc_id, x[(i, j)])
+        set_arc_consumption!(G, arc_id, fuel_res_id, f(data,(i,j)))
+        set_arc_consumption!(G, arc_id, time_res_id, t(data,(i,j)))
       end
-      add_arc_var_mapping!(G, arc_id, x[(i, j)])
-      set_arc_consumption!(G, arc_id, fuel_res_id, f(data,(i,j)))
-      set_arc_consumption!(G, arc_id, time_res_id, t(data,(i,j)))
     end
     for f in F
       arc_id = add_arc!(G, afssIn[f], afssOut[f])

@@ -1,18 +1,33 @@
+using CPLEX
+
 include("bpp.jl")
 include("dsu.jl")
 
-function calculateClosestsCustomers(data::DataGVRP, S₀::Array{Int64}, reduced_graph::Dict{Tuple{Int64, Int64}, Float64})
+#M. Juenger and W. R. Pulleyblank in the 1980s
+function calculateGvrpLBByControlZone(data::DataGVRP, S₀::Array{Int64})
+  M = Model(solver = CplexSolver(
+                                 CPX_PARAM_MIPDISPLAY=0,
+                                 CPX_PARAM_SCRIND=0
+                                ))
+  @variable(M, r[j in S₀] >= 0)
+  @objective(M, Max, sum(2 * r[j] for j in S₀))
+  @constraint(M, edge_capacity[(i, j) in keys(data.reduced_graph)], r[i] + r[j] <= data.reduced_graph[(i, j)])
+  solve(M)
+  return getobjectivevalue(M)
+end
+
+function calculateClosestsCustomers(data::DataGVRP, S₀::Array{Int64})
   η = Dict{Int64, Float64}()
   pi = Dict{Int64, Float64}()
   for i in S₀
     closest, secondClosest = typemax(Float64), typemax(Float64)
     for j in S₀
       if i != j
-        if reduced_graph[ed(i, j)] - (data.G′.V′[i].service_time + data.G′.V′[j].service_time)/2.0 < closest
+        if data.reduced_graph[ed(i, j)] - (data.G′.V′[i].service_time + data.G′.V′[j].service_time)/2.0 < closest
           secondClosest = closest
-          closest = reduced_graph[ed(i, j)] - (data.G′.V′[i].service_time + data.G′.V′[j].service_time)/2.0
-        elseif reduced_graph[ed(i, j)]  - (data.G′.V′[i].service_time + data.G′.V′[j].service_time)/2.0 < secondClosest
-          secondClosest = reduced_graph[ed(i, j)] - (data.G′.V′[i].service_time + data.G′.V′[j].service_time)/2.0
+          closest = data.reduced_graph[ed(i, j)] - (data.G′.V′[i].service_time + data.G′.V′[j].service_time)/2.0
+        elseif data.reduced_graph[ed(i, j)]  - (data.G′.V′[i].service_time + data.G′.V′[j].service_time)/2.0 < secondClosest
+          secondClosest = data.reduced_graph[ed(i, j)] - (data.G′.V′[i].service_time + data.G′.V′[j].service_time)/2.0
         end
       end
     end
@@ -22,7 +37,7 @@ function calculateClosestsCustomers(data::DataGVRP, S₀::Array{Int64}, reduced_
   return η, pi
 end
 
-function calculateGvrpLBByImprovedMST(data::DataGVRP, S₀::Array{Int64}, η::Dict{Int64,Float64}, pi::Dict{Int64,Float64}, gvrpReducedGraph::Dict{Tuple{Int64,Int64}, Float64}) 
+function calculateGvrpLBByImprovedMST(data::DataGVRP, S₀::Array{Int64}, η::Dict{Int64,Float64}, pi::Dict{Int64,Float64}) 
   #boruvka
   bestLB = 0.0
   adjMatrix = Set{Tuple{Int64, Int64}}()
@@ -38,7 +53,7 @@ function calculateGvrpLBByImprovedMST(data::DataGVRP, S₀::Array{Int64}, η::Di
       for j in S₀
         e = ed(i, j)
         if setI != findSetDSU(dsu, j) && i != j && e in data.G′.E
-          cost = gvrpReducedGraph[e] - (data.G′.V′[i].service_time + data.G′.V′[j].service_time)/2.0
+          cost = data.reduced_graph[e] - (data.G′.V′[i].service_time + data.G′.V′[j].service_time)/2.0
           if cost < bestEdgeCost[setI] 
             bestEdgeCost[setI] = cost
             bestEdge[setI] = e
@@ -66,7 +81,7 @@ function calculateGvrpLBByImprovedMST(data::DataGVRP, S₀::Array{Int64}, η::Di
   end
   MSTCost_ = 0.0
   for e in adjMatrix
-    MSTCost_ = MSTCost_ + gvrpReducedGraph[e] - (data.G′.V′[e[1]].service_time + data.G′.V′[e[2]].service_time)/2.0
+    MSTCost_ = MSTCost_ + data.reduced_graph[e] - (data.G′.V′[e[1]].service_time + data.G′.V′[e[2]].service_time)/2.0
 #    println("(", data.G′.V′[e[1]].id_vertex, ", ", data.G′.V′[e[2]].id_vertex, "): ", gvrpReducedGraph[e] - (data.G′.V′[e[1]].service_time + data.G′.V′[e[2]].service_time)/2.0)
   end
 #  println(MSTCost)
@@ -82,7 +97,7 @@ function calculateGvrpLBByImprovedMST(data::DataGVRP, S₀::Array{Int64}, η::Di
       e = ed(i, j)
       if e in adjMatrix
 #        print("(", data.G′.V′[e[1]].id_vertex, ", ", data.G′.V′[e[2]].id_vertex, "): ", (gvrpReducedGraph[e] - (data.G′.V′[e[1]].service_time + data.G′.V′[e[2]].service_time)/2.0), ", ")
-        MSTCost = MSTCost - (gvrpReducedGraph[e] - (data.G′.V′[e[1]].service_time + data.G′.V′[e[2]].service_time)/2.0)
+        MSTCost = MSTCost - (data.reduced_graph[e] - (data.G′.V′[e[1]].service_time + data.G′.V′[e[2]].service_time)/2.0)
         delete!(adjMatrix, e)
       end
     end
@@ -109,7 +124,7 @@ function calculateGvrpLBByImprovedMST(data::DataGVRP, S₀::Array{Int64}, η::Di
           for k in S₀
             e = ed(j, k)
             if k != i && k != j && e in data.G′.E
-              cost = gvrpReducedGraph[e] - (data.G′.V′[j].service_time + data.G′.V′[k].service_time)/2.0
+              cost = data.reduced_graph[e] - (data.G′.V′[j].service_time + data.G′.V′[k].service_time)/2.0
               if setJ != findSetDSU(dsu, k) && cost < bestEdgeCost[setJ] 
 #                println("(", data.G′.V′[e[1]].id_vertex, ", ", data.G′.V′[e[2]].id_vertex, "): ", cost, "<=", bestEdgeCost[setJ])
                 bestEdgeCost[setJ] = cost
@@ -152,8 +167,8 @@ function calculateGVRP_BPP_NRoutesLB(data::DataGVRP, S₀::Array{Int64}, η::Dic
   return solveBPP(dataBPP);
 end
 
-function calculateGVRP_NRoutesLB(data::DataGVRP, S₀::Array{Int64}, reduced_graph::Dict{Tuple{Int64, Int64}, Float64})
-  η, pi  = calculateClosestsCustomers(data, S₀, reduced_graph)
-  return max(calculateGVRP_BPP_NRoutesLB(data, S₀, η, pi), ceil(calculateGvrpLBByImprovedMST(data, S₀, η, pi, reduced_graph)/data.T))
+function calculateGVRP_NRoutesLB(data::DataGVRP, S₀::Array{Int64})
+  η, pi  = calculateClosestsCustomers(data, S₀)
+  return max(calculateGVRP_BPP_NRoutesLB(data, S₀, η, pi), ceil(calculateGvrpLBByImprovedMST(data, S₀, η, pi)/data.T))
 end
 

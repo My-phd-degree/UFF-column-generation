@@ -6,6 +6,7 @@ mutable struct Vertex
     pos_x::Float64
     pos_y::Float64
     service_time::Float64
+    weight::Float64
 end
 
 # Directed graph
@@ -27,6 +28,8 @@ mutable struct DataGVRP
     T::Float64 # Route time limit
     ρ::Float64 # Vehicle fuel comsumption rate
     ε::Float64 # Vehicle average speed
+    reduced_graph::Dict{Tuple{Int64, Int64}, Float64} # reduced graph
+    gvrp_afs_tree::Any
 end
 
 vertices(data::DataGVRP) = [i.id_vertex for i in data.G′.V′[1:end]] # return set of vertices
@@ -52,7 +55,7 @@ contains(p, s) = findnext(s, p, 1) != nothing
 
 function read_Andelmin_Bartolini_Instance(app::Dict{String,Any})
     G′ = InputGraph([], [], Dict())
-    data = DataGVRP(G′, 1, true, false, false, [], [], 0.0, 0.0, 0.0, 0.0)
+    data = DataGVRP(G′, 1, true, false, false, [], [], 0.0, 0.0, 0.0, 0.0, Dict{Tuple{Int64, Int64}, Float64}(), nothing)
     haskey(app, "non-consec") && error("The instances of Andelmin and Bartolini requires edges between AFSs")
     sepChar = ' '
     open(app["instance"]) do f
@@ -74,7 +77,7 @@ function read_Andelmin_Bartolini_Instance(app::Dict{String,Any})
           break
         end
         
-        v = Vertex(i, 0.0, 0.0, 0.0)
+        v = Vertex(i, 0.0, 0.0, 0.0, 0.0)
         v.pos_x = parse(Float64, aux[3])
         v.pos_y = parse(Float64, aux[4])
         push!(G′.V′, v)
@@ -129,13 +132,14 @@ function read_Andelmin_Bartolini_Instance(app::Dict{String,Any})
         end
       end
     end
-
+    data.gvrp_afs_tree = calculateGVRP_AFS_Tree(data)
+    data.reduced_graph = calculateGVRPReducedGraphTime(data)
     return data
 end
 
 function readEMHInstance(app::Dict{String,Any})
     G′ = InputGraph([], [], Dict())
-    data = DataGVRP(G′, 1, true, false, true, [], [], 0.0, 0.0, 0.0, 0.0)
+    data = DataGVRP(G′, 1, true, false, true, [], [], 0.0, 0.0, 0.0, 0.0, Dict{Tuple{Int64, Int64}, Float64}(), nothing)
     open(app["instance"]) do f
       # Ignore header
       readline(f)
@@ -147,7 +151,7 @@ function readEMHInstance(app::Dict{String,Any})
         if length(aux) == 0
           break
         end
-        v = Vertex(i, 0.0, 0.0, 0.0)
+        v = Vertex(i, 0.0, 0.0, 0.0, 0.0)
         v.pos_x = parse(Float64, aux[3])
         v.pos_y = parse(Float64, aux[4])
         push!(G′.V′, v) 
@@ -203,13 +207,14 @@ function readEMHInstance(app::Dict{String,Any})
         end
       end
     end
-
+    data.gvrp_afs_tree = calculateGVRP_AFS_Tree(data)
+    data.reduced_graph = calculateGVRPReducedGraphTime(data)
     return data
 end
 
 function readMatheusInstance(app::Dict{String,Any})
     G′ = InputGraph([], [], Dict())
-    data = DataGVRP(G′, 1, true, false, false, [], [], 0.0, 0.0, 0.0, 0.0)
+    data = DataGVRP(G′, 1, true, false, false, [], [], 0.0, 0.0, 0.0, 0.0, Dict{Tuple{Int64, Int64}, Float64}(), nothing)
     data.non_consec = haskey(app, "non-consec") && app["non-consec"]
     sepChar = ';'
     open(app["instance"]) do f
@@ -234,7 +239,7 @@ function readMatheusInstance(app::Dict{String,Any})
       readline(f)
       line = readline(f)
       aux = split(line, [sepChar]; limit=0, keepempty=false)
-      v = Vertex(parse(Int, aux[1]) + 1, parse(Float64, aux[2]), parse(Float64, aux[3]), parse(Float64, aux[4]))
+      v = Vertex(parse(Int, aux[1]) + 1, parse(Float64, aux[2]), parse(Float64, aux[3]), parse(Float64, aux[4]), 0.0)
       push!(G′.V′, v) 
       i = 2
       # get customers
@@ -247,7 +252,7 @@ function readMatheusInstance(app::Dict{String,Any})
         if length(aux) == 1
           break
         end
-        v = Vertex(parse(Int, aux[1]) + 1, parse(Float64, aux[2]), parse(Float64, aux[3]), parse(Float64, aux[4]))
+        v = Vertex(parse(Int, aux[1]) + 1, parse(Float64, aux[2]), parse(Float64, aux[3]), parse(Float64, aux[4]), 0.0)
         push!(data.C, i)
         push!(G′.V′, v) 
         i = i + 1
@@ -261,7 +266,7 @@ function readMatheusInstance(app::Dict{String,Any})
         if length(aux) == 1
           break
         end
-        v = Vertex(parse(Int, aux[1]) + 1, parse(Float64, aux[2]), parse(Float64, aux[3]), parse(Float64, aux[4]))
+        v = Vertex(parse(Int, aux[1]) + 1, parse(Float64, aux[2]), parse(Float64, aux[3]), parse(Float64, aux[4]), 0.0)
         push!(data.F, i)
         push!(G′.V′, v) 
         i = i + 1
@@ -291,7 +296,8 @@ function readMatheusInstance(app::Dict{String,Any})
         end
       end
     end
-
+    data.gvrp_afs_tree = calculateGVRP_AFS_Tree(data)
+    data.reduced_graph = calculateGVRPReducedGraphTime(data)
     return data
 end
 
@@ -304,5 +310,16 @@ nb_vertices(data::DataGVRP) = length(vertices(data))
 
 # return incident edges of i
 function δ(data::DataGVRP, i::Integer)
-    return vcat([(j, i) for j in 1:i - 1 if (j, i) in data.G′.E], [(i, j) for j in i + 1:(length(data.G′.V′)) if (i, j) in data.G′.E])
+#    return vcat([(j, i) for j in 1:i - 1 if (j, i) in data.G′.E], [(i, j) for j in i + 1:(length(data.G′.V′)) if (i, j) in data.G′.E])
+  return [(j, k) for (j, k) in data.G′.E if j == i || k == i]
+end
+
+# return endering arcs of i
+function δ⁻(data::DataGVRP, i::Integer)
+  return [(j, k) for (j, k) in data.G′.E if k == i]
+end
+
+# return endering arcs of i
+function δ⁺(data::DataGVRP, i::Integer)
+  return [(j, k) for (j, k) in data.G′.E if j == i]
 end

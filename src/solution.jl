@@ -132,6 +132,21 @@ function getsolution(data::DataGVRP, optimizer::VrpOptimizer, x, y, objval, app:
   return Solution(objval, routes)
 end
 
+# build Solution for the compact model 
+function getsolution_compact_with_arcs(data::DataGVRP, optimizer::VrpOptimizer, x, objval, app::Dict{String,Any}, afss_pairs::Dict{Int64, Tuple{Int64, Int64}})
+  #dfs
+end
+
+# build Solution for the y compact model 
+function getsolution_compact_y(data::DataGVRP, optimizer::VrpOptimizer, x, y, objval, app::Dict{String,Any})
+  #...
+end
+
+# build Solution for the y model 
+function getsolution_y(data::DataGVRP, optimizer::VrpOptimizer, x, y, objval, app::Dict{String,Any})
+  #...
+end
+
 function print_routes(data::DataGVRP, solution::Solution)
   for (i, r) in enumerate(solution.routes)
     print("Route #$i: ")
@@ -148,6 +163,7 @@ function checksolution(data::DataGVRP, solution)
   nTimesCustomersVisited = Dict{Int64, Int64}([i => 0 for i in data.C])
   routes = solution.routes
   for route in routes
+    println(route)
     n = length(route)
     n == 0 && error("Route is empty")
     route[1] != 1 && error("Route does not begins at the depot")

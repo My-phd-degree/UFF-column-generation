@@ -1,6 +1,4 @@
-include("gvrp_afs_tree.jl")
-
-function calculateGVRPReducedGraphTime(data::DataGVRP, gvrp_afs_tree::GVRP_AFS_Tree) 
+function calculateGVRPReducedGraphTime(data::DataGVRP) 
   times = Dict{Tuple{Int64,Int64}, Float64}()
   depot = data.depot_id
   fuel = f
@@ -22,7 +20,7 @@ function calculateGVRPReducedGraphTime(data::DataGVRP, gvrp_afs_tree::GVRP_AFS_T
             time = t(data, ed(i, j))
             if ed(i, j) in data.G′.E && 
               fuel(data, ed(f, i)) + fuel(data, ed(i, j)) + fuel(data, ed(j, r)) <= data.β && 
-              gvrp_afs_tree.times[f] + t(data, ed(f, i)) + time + t(data, ed(j, r)) + gvrp_afs_tree.times[r] <= data.T
+              data.gvrp_afs_tree.times[f] + t(data, ed(f, i)) + time + t(data, ed(j, r)) + data.gvrp_afs_tree.times[r] <= data.T
               minTime = time < minTime ? time : minTime
             else
               for f′ in F₀
@@ -32,20 +30,20 @@ function calculateGVRPReducedGraphTime(data::DataGVRP, gvrp_afs_tree::GVRP_AFS_T
                 time = t(data, ed(i, f′)) + t(data, ed(f′, j))
                 if fuel(data, ed(f, i)) + fuel(data, ed(i, f′)) <= data.β && 
                   fuel(data, ed(f′, j)) + fuel(data, ed(j, r)) <= data.β && 
-                  gvrp_afs_tree.times[f] + t(data, ed(f, i)) + time + t(data, ed(j, r)) + gvrp_afs_tree.times[r] <= data.T
+                  data.gvrp_afs_tree.times[f] + t(data, ed(f, i)) + time + t(data, ed(j, r)) + data.gvrp_afs_tree.times[r] <= data.T
                   minTime = time < minTime ? time : minTime
                 else
                   for r′ in F₀
                     if !(ed(r′, j) in data.G′.E)
                       continue
                     end
-                    time = t(data, ed(i, f′)) + gvrp_afs_tree.pairTimes[(f′, r′)] + t(data, ed(r′, j))
+                    time = t(data, ed(i, f′)) + data.gvrp_afs_tree.pairTimes[(f′, r′)] + t(data, ed(r′, j))
                     if fuel(data, ed(f, i)) + fuel(data, ed(i, f′)) <= data.β && 
                       fuel(data, ed(r′, j)) + fuel(data, ed(j, r)) <= data.β 
-                      if gvrp_afs_tree.times[f] + t(data, ed(f, i)) + time + t(data, ed(j, r)) + gvrp_afs_tree.times[r] <= data.T
+                      if data.gvrp_afs_tree.times[f] + t(data, ed(f, i)) + time + t(data, ed(j, r)) + data.gvrp_afs_tree.times[r] <= data.T
                         minTime = time < minTime ? time : minTime
                       else
-                        time = t(data, ed(i, f′)) + gvrp_afs_tree.times[f′] + gvrp_afs_tree.times[r′] + t(data, ed(r′, j))
+                        time = t(data, ed(i, f′)) + data.gvrp_afs_tree.times[f′] + data.gvrp_afs_tree.times[r′] + t(data, ed(r′, j))
                         minTime = time < minTime ? time : minTime
                       end
                     end

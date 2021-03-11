@@ -1,7 +1,13 @@
 using VrpSolver, JuMP, ArgParse
-# using CPLEX
+
 include("data.jl")
+include("gvrp_afs_tree.jl")
+include("reduced_graph.jl")
+include("lower_bounds.jl")
 include("model.jl")
+include("model_compact_with_arcs.jl")
+include("model_y.jl")
+include("model_compact_y.jl")
 include("solution.jl")
 include("preprocessings.jl")
 include("SparseMaxFlowMinCut.jl")
@@ -12,6 +18,9 @@ function parse_commandline(args_array::Array{String,1}, appfolder::String)
     @add_arg_table s begin
         "instance"
             help = "Instance file path"
+        "--model-type"
+        help = "Instance edges preprocessings (normal, compacted-with-arcs, y (only for non-consec instances), compact-y)"
+            default = "normal"
         "--preprocessings"
             help = "Instance edges preprocessings"
         "--non-consec" 
@@ -38,8 +47,8 @@ function parse_commandline(args_array::Array{String,1}, appfolder::String)
             action = :store_true
         "--batch", "-b"
             help = "batch file path"
-        "--instance_type", "-i"
-            help = "Select the instance type (EMH, Matheus)"
+        "--instance-type", "-i"
+            help = "Select the instance type (EMH, Matheus, Andelmin-Bartolini)"
             default = "EMH"
         "--verbose", "-v"
             help = "true to see the logs, false otherwise"
@@ -58,11 +67,11 @@ function run_gvrp(app::Dict{String,Any})
   flush(stdout)
 
   instance_name = split(basename(app["instance"]), ".")[1] 
-  if app["instance_type"] == "Matheus"
+  if app["instance-type"] == "Matheus"
     data = readMatheusInstance(app)
-  elseif app["instance_type"] == "EMH"
+  elseif app["instance-type"] == "EMH"
     data = readEMHInstance(app)
-  elseif app["instance_type"] == "Andelmin-Bartolini"
+  elseif app["instance-type"] == "Andelmin-Bartolini"
     data = read_Andelmin_Bartolini_Instance(app)
   end
 
@@ -74,22 +83,39 @@ function run_gvrp(app::Dict{String,Any})
 
   solution_found = false
   if !app["nosolve"]
-    (model, x, y) = build_model(data)
-
-    # enum_paths, complete_form = get_complete_formulation(model, app["cfg"])
-    # complete_form.solver = CplexSolver() # set MIP solver
-    # print_enum_paths(enum_paths)
-    # println(complete_form)
-    # solve(complete_form)
-    # println("Objective value: $(getobjectivevalue(complete_form))\n")
-
-    optimizer = VrpOptimizer(model, app["cfg"], instance_name)
-    set_cutoff!(optimizer, app["ub"])
-
-    (status, solution_found) = optimize!(optimizer)
-
-    if solution_found
-      sol = getsolution(data, optimizer, x, y, get_objective_value(optimizer), app)
+    if app["model-type"] == "compacted-with-arcs"
+      (model, x, afss_pairs) = build_model_compact_with_arcs(data)
+      optimizer = VrpOptimizer(model, app["cfg"], instance_name)
+      set_cutoff!(optimizer, app["ub"])
+      (status, solution_found) = optimize!(optimizer)
+      if solution_found
+        sol = getsolution_compact_with_arcs(data, optimizer, x, get_objective_value(optimizer), app, afss_pairs)
+      end
+    elseif app["model-type"] == "compact-y"
+      (model, x, y) = build_model_compact_y(data)
+      optimizer = VrpOptimizer(model, app["cfg"], instance_name)
+      set_cutoff!(optimizer, app["ub"])
+      (status, solution_found) = optimize!(optimizer)
+      if solution_found
+        sol = getsolution_compact_y(data, optimizer, x, y, get_objective_value(optimizer), app)
+      end
+    elseif app["model-type"] == "y"
+      !data.non_consec && error("The model y only can be executed with non_consec flag")
+      (model, x, y) = build_model_y(data)
+      optimizer = VrpOptimizer(model, app["cfg"], instance_name)
+      set_cutoff!(optimizer, app["ub"])
+      (status, solution_found) = optimize!(optimizer)
+      if solution_found
+        sol = getsolution_y(data, optimizer, x, y, get_objective_value(optimizer), app)
+      end
+    else
+      (model, x, y) = build_model(data)
+      optimizer = VrpOptimizer(model, app["cfg"], instance_name)
+      set_cutoff!(optimizer, app["ub"])
+      (status, solution_found) = optimize!(optimizer)
+      if solution_found
+        sol = getsolution(data, optimizer, x, y, get_objective_value(optimizer), app)
+      end
     end
   end
   println("########################################################")
