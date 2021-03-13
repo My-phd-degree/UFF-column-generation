@@ -42,7 +42,8 @@ function calculateGVRPReducedGraphTime(data::DataGVRP)
                       fuel(data, ed(r′, j)) + fuel(data, ed(j, r)) <= data.β 
                       if data.gvrp_afs_tree.times[f] + t(data, ed(f, i)) + time + t(data, ed(j, r)) + data.gvrp_afs_tree.times[r] <= data.T
                         minTime = time < minTime ? time : minTime
-                      else
+                      elseif data.gvrp_afs_tree.times[f] + t(data, ed(f, i)) + t(data, ed(i, f′)) + data.gvrp_afs_tree.times[f′] <= data.T && 
+                          data.gvrp_afs_tree.times[r′] + t(data, ed(r′, j)) + t(data, ed(j, r)) + data.gvrp_afs_tree.times[r] <= data.T
                         time = t(data, ed(i, f′)) + data.gvrp_afs_tree.times[f′] + data.gvrp_afs_tree.times[r′] + t(data, ed(r′, j))
                         minTime = time < minTime ? time : minTime
                       end

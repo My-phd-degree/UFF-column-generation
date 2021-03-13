@@ -138,8 +138,91 @@ function getsolution_compact_with_arcs(data::DataGVRP, optimizer::VrpOptimizer, 
 end
 
 # build Solution for the y compact model 
-function getsolution_compact_y(data::DataGVRP, optimizer::VrpOptimizer, x, y, objval, app::Dict{String,Any})
-  #...
+function getsolution_compact_y(data::DataGVRP, optimizer::VrpOptimizer, P::Dict{Tuple{Int64,Int64,Int64,Int64}, Float64}, x, y, objval, app::Dict{String,Any})
+  objval = 0.0
+  routes = []
+  E, dim = edges(data), dimension(data)
+  C = data.C # Set of customers vertices
+  C₀ = vcat(data.depot_id, C) # Set of customers and depot
+  EC₀ = [(i, j) for (i, j) in E if i in C₀ && j in C₀]
+  depot_id = data.depot_id
+  xWeights = Dict{Tuple{Int64, Int64}, Float64}(e => get_value(optimizer, x[e]) for e in EC₀ if get_value(optimizer, x[e]) > 0.5)
+  yWeights = Dict{Tuple{Int64, Int64, Int64, Int64}, Float64}(p => get_value(optimizer, y[p]) for p in keys(P) if get_value(optimizer, y[p]) > 0.5)
+  function δ(i::Integer)
+    return [(j, k) for (j, k) in keys(xWeights) if j == i || k == i]
+  end
+  function δ′(i::Integer)
+    return [p for p in keys(yWeights) if p[1] == i || p[4] == i]
+  end
+  for e in keys(xWeights)
+    println(e)
+  end
+  for p in keys(yWeights)
+    println(p)
+  end
+  #get routes
+  function dfs(route::Array{Int64}, i::Int64)
+    if i == depot_id
+      return
+    end
+    edges = δ(i)
+    if !isempty(edges)
+#      println("trying with $route")
+      e = first(edges)
+      xWeights[e] = xWeights[e] - 1.0;
+      if xWeights[e] < 0.5
+        delete!(xWeights, e)
+      end
+      j = e[1] == i ? e[2] : e[1]
+      push!(route, j)
+      dfs(route, j)
+      return
+    end
+    paths = δ′(i)
+    if !isempty(paths)
+#      println("trying with $route")
+      p = first(paths)
+      yWeights[p] = yWeights[p] - 1.0;
+      if yWeights[p] < 0.5
+        delete!(yWeights, p)
+      end
+      p′ = i == p[1] ? p : reverse(p)
+      f, r, j = p′[2], p′[3], p′[4]
+      push!(route, getAFSTreePath(f, r, data.gvrp_afs_tree)..., j)
+      dfs(route, j)
+    end
+  end
+  while !isempty(δ(depot_id))
+    e = first(δ(depot_id))
+    xWeights[e] = xWeights[e] - 1.0;
+    if xWeights[e] < 0.5
+      delete!(xWeights, e)
+    end
+    j = e[1] == depot_id ? e[2] : e[1]
+    route = [depot_id, j]
+    dfs(route, j)
+    push!(routes, route)
+  end
+  while !isempty(δ′(depot_id))
+    p = first(δ′(depot_id))
+    yWeights[p] = yWeights[p] - 1.0;
+    if yWeights[p] < 0.5
+      delete!(yWeights, p)
+    end
+    p′ = depot_id == p[1] ? p : reverse(p)
+    f, r, j = p′[2], p′[3], p′[4]
+    route = [depot_id, getAFSTreePath(f, r, data.gvrp_afs_tree)..., j]
+    dfs(route, j)
+    push!(routes, route)
+  end
+  # return solution 
+  for route in routes
+    n = length(route)
+    for i in 2:n
+      objval = objval + d(data, ed(route[i - 1], route[i]))
+    end
+  end
+  return Solution(objval, routes)
 end
 
 # build Solution for the y model 

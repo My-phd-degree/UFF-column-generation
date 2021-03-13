@@ -92,12 +92,12 @@ function run_gvrp(app::Dict{String,Any})
         sol = getsolution_compact_with_arcs(data, optimizer, x, get_objective_value(optimizer), app, afss_pairs)
       end
     elseif app["model-type"] == "compact-y"
-      (model, x, y) = build_model_compact_y(data)
+      (model, P, x, y) = build_model_compact_y(data)
       optimizer = VrpOptimizer(model, app["cfg"], instance_name)
       set_cutoff!(optimizer, app["ub"])
       (status, solution_found) = optimize!(optimizer)
       if solution_found
-        sol = getsolution_compact_y(data, optimizer, x, y, get_objective_value(optimizer), app)
+        sol = getsolution_compact_y(data, optimizer, P, x, y, get_objective_value(optimizer), app)
       end
     elseif app["model-type"] == "y"
       !data.non_consec && error("The model y only can be executed with non_consec flag")

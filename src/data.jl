@@ -54,80 +54,64 @@ end
 contains(p, s) = findnext(s, p, 1) != nothing
 
 function read_Andelmin_Bartolini_Instance(app::Dict{String,Any})
-    G′ = InputGraph([], [], Dict())
-    data = DataGVRP(G′, 1, true, false, false, [], [], 0.0, 0.0, 0.0, 0.0, Dict{Tuple{Int64, Int64}, Float64}(), nothing)
+    data = DataGVRP(InputGraph([], [], Dict{Tuple{Int64, Int64},Float64}()), 1, true, false, false, [], [], 0.0, 0.0, 0.0, 0.0, Dict{Tuple{Int64, Int64}, Float64}(), nothing)
     haskey(app, "non-consec") && error("The instances of Andelmin and Bartolini requires edges between AFSs")
     sepChar = ' '
+    FVertices = []
+    CVertices = []
     open(app["instance"]) do f
-      # Ignore header and get paper default values
-      readline(f)
-      Customers     = 50
-      Stations      = 22
-      MaxTime       = 660
-      MaxDistance   = 300
-      Speed         = 0.66666667
-      ServiceTime   = 30
-      RefuelTime    = 15
-      i = 1
+      # get vehicle data
+      line = readline(f)
+      aux = split(line, [' ']; limit=0, keepempty=false)
+      data.T = parse(Float64, aux[4])
+      data.β = parse(Float64, aux[5])
+      data.ε = parse(Float64, aux[6])
+      data.ρ = data.ε > 0.7 ? 0.2137 : 0.2 
+      CustomerServiceTime = parse(Float64, aux[7])
+      FServiceTime = parse(Float64, aux[8])
       while !eof(f)
-        # Read vertices
+        # get vertex
         line = readline(f)
         aux = split(line, [' ']; limit=0, keepempty=false)
         if length(aux) == 0
-          break
-        end
-        
-        v = Vertex(i, 0.0, 0.0, 0.0, 0.0)
-        v.pos_x = parse(Float64, aux[3])
-        v.pos_y = parse(Float64, aux[4])
-        push!(G′.V′, v)
-        if aux[2] == "d"
-          v.service_time = 0
+          continue
+        elseif strip(line) == "Infeasible customers" 
+          if !eof(f)
+            line = readline(f)
+            ids = split(line, [' ']; limit=0, keepempty=false)
+            for id in ids
+              filter!(v->v.id_vertex ≠ parse(Int64, id), CVertices)
+            end
+          end
+        elseif aux[2] == "d"
+          push!(data.G′.V′, Vertex(parse(Int64, aux[1]), parse(Float64, aux[3]), parse(Float64, aux[4]), 0.0, 0.0))
         elseif aux[2] == "f"
-          # Get AFS
-          v.service_time = aux[2] == "f" ? RefuelTime : 0
-          push!(data.F, v.id_vertex)
-        elseif aux[2] == "c"
-          # Get customer
-          v.service_time = ServiceTime
-          push!(data.C, v.id_vertex)
-        end
-        i += 1
-      end
-      # Read params
-      
-      #Vehicle capacity
-      data.β = 60
-      # Get vehicle fuel consumptin rate
-      data.ρ = 0.2
-      # Get vehicle time limit
-      data.T = MaxTime
-      # Get vehicle average speed
-      data.ε = Speed
-
-      line = readline(f)#
-      #line = readline(f)#Infeasible customers 
-    end
-
-    #read preprocessings
-    invalidEdges = []
-    if haskey(app, "preprocessings") && app["preprocessings"] != nothing
-      open(app["preprocessings"]) do f
-        while !eof(f)
-          # read edge
-          line = readline(f)
-          edge = split(line, [' ', ',']; limit=0, keepempty=false)
-          push!(invalidEdges, (parse(Int, edge[1]) + 1, parse(Int, edge[2]) + 1))
+          push!(FVertices, Vertex(parse(Int64, aux[1]), parse(Float64, aux[3]), parse(Float64, aux[4]), FServiceTime, 0.0))
+        else
+          push!(CVertices, Vertex(parse(Int64, aux[1]), parse(Float64, aux[3]), parse(Float64, aux[4]), CustomerServiceTime, 0.0))
         end
       end
     end
-
+    data.G′.V′[1].id_vertex = 1
+    i = 2
+    for f in FVertices
+      f.id_vertex = i
+      push!(data.G′.V′, f)
+      push!(data.F, i)
+      i = i + 1
+    end
+    for c in CVertices
+      c.id_vertex = i
+      push!(data.G′.V′, c)
+      push!(data.C, i)
+      i = i + 1
+    end
     # create edges
     for i in vertices(data)
       for j in vertices(data) # add arcs between vertices
-        if i < j && !((i, j) in invalidEdges)
+        if i < j 
           e = (i, j)
-          push!(G′.E, e) # add edge e
+          push!(data.G′.E, e) # add edge e
           data.G′.cost[e] = distance(data, e)
         end
       end

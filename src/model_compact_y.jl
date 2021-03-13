@@ -24,11 +24,14 @@ function build_model_compact_y(data::DataGVRP)
   T = data.T # Set of AFSs vertices
   gvrp_afs_tree = data.gvrp_afs_tree
   fuel = f
-  P = Dict{Tuple{Int64, Int64, Int64, Int64},Int64}()
-  function δ′(P::Dict{Tuple{Int64, Int64, Int64, Int64},Int64}, i::Integer)
+  P = Dict{Tuple{Int64, Int64, Int64, Int64},Float64}()
+  function δ′(P::Dict{Tuple{Int64, Int64, Int64, Int64},Float64}, i::Integer)
     return [p for p in keys(P) if p[1] == i || p[4] == i]
   end
-
+  function δ′′(P::Dict{Tuple{Int64, Int64, Int64, Int64},Float64}, i::Integer, j::Integer)
+    return [p for p in keys(P) if (p[1] == i && p[4] == j) || (p[1] == j && p[4] == i)]
+  end
+  # calculating P
   for i in C₀
     for j in C₀
       if i < j
@@ -66,11 +69,11 @@ function build_model_compact_y(data::DataGVRP)
   @constraint(gvrp.formulation, customers_edges[e in EC], x[e] <= 1)
   @constraint(gvrp.formulation, depot_edges[e in E₀], x[e] <= 2)
 
-  routes = [
-            [0, 2, 7, 5, 21, 20, 21, 14, 17, 21, 9, 21, 13, 2, 0],
-            [0, 16, 10, 2, 8, 18, 3, 18, 19, 18, 2, 6, 0],
-            [0, 16, 15, 12, 15, 4, 15, 11, 15, 1, 16, 0],
-           ]
+# routes = [
+#           [0, 2, 7, 5, 21, 20, 21, 14, 17, 21, 9, 21, 13, 2, 0],
+#           [0, 16, 10, 2, 8, 18, 3, 18, 19, 18, 2, 6, 0],
+#           [0, 16, 15, 12, 15, 4, 15, 11, 15, 1, 16, 0],
+#          ]
 
   if @isdefined routes
     ids = Dict{Int,Int}()
@@ -134,7 +137,28 @@ function build_model_compact_y(data::DataGVRP)
       @constraint(gvrp.formulation, y[p] == yWeights[p])
     end
   end
-
+  # remove dominated paths
+  for i in C₀
+    for j in C₀
+      if i < j
+        P′ = δ′′(P, i, j)
+        for p in P′
+          (i, f, r, j) = p[1] == i ? p : reverse(p)
+          for p′ in P′ 
+            (i, f′, r′, j) = p′[1] == i ? p′ : reverse(p′)
+            # if p′ dominates p
+            if p != p′ && 
+              fuel(data, ed(i, f′)) <= fuel(data, ed(i, f)) && 
+              fuel(data, ed(r′, j)) <= fuel(data, ed(r, j)) && 
+              gvrp_afs_tree.pairCosts[(f′, r′)] <= gvrp_afs_tree.pairCosts[(f, r)]
+              delete!(P, p)
+              break
+            end
+          end
+        end
+      end
+    end
+  end
   # Build the model directed graph G=(V,A)
   function build_graph()
     v_source = v_sink = depot_id
@@ -245,28 +269,20 @@ function build_model_compact_y(data::DataGVRP)
   set_branching_priority!(gvrp, "y", 1)
   set_branching_priority!(gvrp, "x", 1)
 
-   function edge_ub_callback()
-      for (i,j) in E
-        e = (i,j)
-         if i in C && j in C && get_value(gvrp.optimizer, x[e]) > 1.001
-            println("Adding edge ub cut for e = ", e)
-            add_dynamic_constr!(gvrp.optimizer, [x[e]], [1.0], <=, 1.0, "edge_ub")
-         end
-      end
-   end
-#   add_cut_callback!(gvrp, edge_ub_callback, "edge_ub")
-
   function maxflow_mincut_callback()
     M = 100000
     # for all routes
     g = SparseMaxFlowMinCut.ArcFlow[]
-    for (i, j) in E
-      e = (i, j)
-      value::Float64 = sum(get_value(gvrp.optimizer, x[e]))
-      if value > 0.0001
-        flow_::Int = trunc(floor(value, digits=5) * M)
-        push!(g, SparseMaxFlowMinCut.ArcFlow(i, j, flow_)) # arc i -> j
-        push!(g, SparseMaxFlowMinCut.ArcFlow(j, i, flow_)) # arc j -> i
+    for i in C₀
+      for j in C₀
+        if i < j
+          value::Float64 = sum(get_value(gvrp.optimizer, y[p]) for p in δ′′(P, i, j)) + (ed(i, j) in EC₀ ? get_value(gvrp.optimizer, x[ed(i, j)]) : 0.0)
+          if value > 0.0001
+            flow_::Int = trunc(floor(value, digits=5) * M)
+            push!(g, SparseMaxFlowMinCut.ArcFlow(i, j, flow_)) # arc i -> j
+            push!(g, SparseMaxFlowMinCut.ArcFlow(j, i, flow_)) # arc j -> i
+          end
+        end
       end
     end
 
@@ -278,11 +294,11 @@ function build_model_compact_y(data::DataGVRP)
         set1, set2 = [], []
         [cut[i] == 1 ? push!(set1, i) : push!(set2, i) for i in 1:n]
         println(set1, "\\", set2)
-        lhs_vars = [x[ed(i, j)] for i in set2 for j in set1 if ed(i, j) in E]
-        lhs_coeff = [1.0 for i in set2 for j in set1 if ed(i, j) in E]
-        setIn = c in set1 ? set1 : set2
+        E′ = [ed(i, j) for i in set2 for j in set1 if ed(i, j) in EC₀] 
+        P′ = [p for i in set2 for j in set1 for p in δ′′(P, i, j)]
+        lhs_vars = vcat([x[e] for e in E′], [y[p] for p in P′])
+        lhs_coeff = [1.0 for i in 1:(length(E′) + length(P′))]
         add_dynamic_constr!(gvrp.optimizer, lhs_vars, lhs_coeff, >=, 2.0, "mincut")
-
         push!(added_cuts, cut)
       end
     end
@@ -290,7 +306,8 @@ function build_model_compact_y(data::DataGVRP)
       println(">>>>> Add min cuts : ", length(added_cuts), " cut(s) added") 
     end
   end
-#  add_cut_callback!(gvrp, maxflow_mincut_callback, "mincut")
+  add_cut_callback!(gvrp, maxflow_mincut_callback, "mincut")
 
-  return (gvrp, x, y)
+
+  return (gvrp, P, x, y)
 end
