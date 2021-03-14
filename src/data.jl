@@ -118,6 +118,14 @@ function read_Andelmin_Bartolini_Instance(app::Dict{String,Any})
     end
     data.gvrp_afs_tree = calculateGVRP_AFS_Tree(data)
     data.reduced_graph = calculateGVRPReducedGraphTime(data)
+
+#   invalidEdges = vcat(get_invalid_edges_1(data), get_invalid_edges_2(data), get_invalid_edges_3(data), get_invalid_edges_4(data))
+#   data.G′.E = setdiff(data.G′.E, invalidEdges)
+#   for e in invalidEdges
+#     if e in keys(data.G′.cost)
+#       delete!(data.G′.cost, e)
+#     end
+#   end
     return data
 end
 

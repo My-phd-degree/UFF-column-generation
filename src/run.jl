@@ -19,7 +19,7 @@ function parse_commandline(args_array::Array{String,1}, appfolder::String)
         "instance"
             help = "Instance file path"
         "--model-type"
-        help = "Instance edges preprocessings (normal, compacted-with-arcs, y (only for non-consec instances), compact-y)"
+        help = "Instance edges preprocessings (normal, compacted-with-arcs, y (only for non-consec instances), compacted-y)"
             default = "normal"
         "--preprocessings"
             help = "Instance edges preprocessings"
@@ -92,8 +92,8 @@ function run_gvrp(app::Dict{String,Any})
       if solution_found
         sol = getsolution_compact_with_arcs(data, directedData, optimizer, x, get_objective_value(optimizer), app, afss_pairs)
       end
-    elseif app["model-type"] == "compact-y"
-      data.non_consec && error("The model compact-y only can be executed without non_consec flag")
+    elseif app["model-type"] == "compacted-y"
+      data.non_consec && error("The model compacted-y only can be executed without non_consec flag")
       (model, P, x, y) = build_model_compact_y(data)
       optimizer = VrpOptimizer(model, app["cfg"], instance_name)
       set_cutoff!(optimizer, app["ub"])

@@ -11,7 +11,8 @@ function get_invalid_edges_1(data::DataGVRP)
   return edges
 end
 
-function get_invalid_edges_2(data::DataGVRP, gvrp_afs_tree::GVRP_AFS_Tree) 
+function get_invalid_edges_2(data::DataGVRP) 
+  gvrp_afs_tree = data.gvrp_afs_tree
   edges = []
   fuel = f
   for i in data.C 
@@ -32,7 +33,8 @@ function get_invalid_edges_2(data::DataGVRP, gvrp_afs_tree::GVRP_AFS_Tree)
   return edges
 end
 
-function get_invalid_edges_3(data::DataGVRP, gvrp_afs_tree::GVRP_AFS_Tree) 
+function get_invalid_edges_3(data::DataGVRP) 
+  gvrp_afs_tree = data.gvrp_afs_tree
   edges = []
   fuel = f
   for i in data.C 
@@ -65,7 +67,8 @@ function get_invalid_edges_3(data::DataGVRP, gvrp_afs_tree::GVRP_AFS_Tree)
   return edges
 end
 
-function get_invalid_edges_4(data::DataGVRP, gvrp_afs_tree::GVRP_AFS_Tree) 
+function get_invalid_edges_4(data::DataGVRP) 
+  gvrp_afs_tree = data.gvrp_afs_tree
   edges = []
   fuel = f
   for i in data.C 
