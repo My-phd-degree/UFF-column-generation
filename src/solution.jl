@@ -20,7 +20,7 @@ function getsolution(data::DataGVRP, optimizer::VrpOptimizer, x, y, objval, app:
 
   #solve MIP model to get routes
   nRoutes = Int64(floor(sum(E_weights[e] for e in δ(data, data.depot_id) if e in keys(E_weights)) + 0.5))
-  M = [i for i in 1:nRoutes]
+  M = 1:nRoutes
   V = [i for i in 1:length(data.G′.V′)]
   A::Array{Tuple{Int64,Int64}} = vcat([e for e in keys(E_weights)], [(j, i) for (i, j) in keys(E_weights)])
   δ⁺(i) = [(j, k) for (j, k) in A if j == i]
@@ -43,7 +43,6 @@ function getsolution(data::DataGVRP, optimizer::VrpOptimizer, x, y, objval, app:
   @constraint(vrp, edge_flow[(i, j) in keys(E_weights)], sum(x´[k, (i, j)] + x´[k, (j, i)] for k in M) == get_value(optimizer, x[(i, j)]))
   @constraint(vrp, route_used_at_most_once[k in M], sum(x´[k, a] for a in δ⁺(data.depot_id)) <= 1.0)
   @constraint(vrp, route_time_limit[k in M], sum(t(data, ed(a[1], a[2])) * x´[k, a] for a in A) <= data.T)
-  @constraint(vrp, route_order[k in M], sum(t(data, ed(a[1], a[2])) * x´[k, a] for a in A) <= data.T)
 
   #callback
   function separa(cb, corte)
@@ -133,8 +132,125 @@ function getsolution(data::DataGVRP, optimizer::VrpOptimizer, x, y, objval, app:
 end
 
 # build Solution for the compact model 
-function getsolution_compact_with_arcs(data::DataGVRP, optimizer::VrpOptimizer, x, objval, app::Dict{String,Any}, afss_pairs::Dict{Int64, Tuple{Int64, Int64}})
-  #dfs
+function getsolution_compact_with_arcs(data::DataGVRP, directedData::DataGVRP, optimizer::VrpOptimizer, x, objval, app::Dict{String,Any}, afss_pairs::Dict{Int64, Tuple{Int64, Int64}})
+  objval = 0.0
+  routes = []
+  A = edges(directedData)
+  C = directedData.C # Set of customers vertices
+  V = [i for i in 1:length(directedData.G′.V′)]
+  depot_id = directedData.depot_id
+  weights = Dict{Tuple{Int64, Int64},Float64}(a => get_value(optimizer, x[a]) for a in A if get_value(optimizer, x[a]) > 0.5)
+  #get routes
+  function δ⁺(i::Integer)
+    return [(j, k) for (j, k) in keys(weights) if j == i]
+  end
+  function δ⁻(i::Integer)
+    return [(j, k) for (j, k) in keys(weights) if k == i]
+  end
+  #solve MIP model to get routes
+  nRoutes = Int64(floor(sum(weights[a] for a in δ⁺(depot_id)) + 0.5))
+  M = [i for i in 1:nRoutes]
+  A´ = keys(weights)
+
+  vrp = Model(solver = CplexSolver())
+  @variable(vrp, x´[k in M, a in A´] >= 0, Int)
+  @constraint(vrp, deg[k in M, i in V], sum(x´[k, a] for a in δ⁺(i)) == sum(x´[k, a] for a in δ⁻(i)))
+  @constraint(vrp, arc_flow[a in A´], sum(x´[k, a] for k in M) == weights[a])
+  @constraint(vrp, route_used_at_most_once[k in M], sum(x´[k, a] for a in δ⁺(depot_id)) <= 1.0)
+  @constraint(vrp, route_time_limit[k in M], sum(t(directedData, a) * x´[k, a] for a in A´) <= directedData.T)
+
+  #callback
+  function separa(cb, corte)
+    x´´ = [Dict{Tuple{Int64,Int64},Float64}(a => getvalue(x´[k, a]) for a in A´) for k in M]
+    # dfs
+    function dfs(nodes::Array{Int64}, k::Int64, i::Int64)
+      for a in δ⁺(i) 
+        j = a[2]
+        if x´´[k][a] > 0.001 && !(j in nodes)
+          push!(nodes, j)
+          dfs(nodes, k, j)
+        end
+      end
+    end
+    for i in C
+      for k in M
+        component = [i]
+        dfs(component, k, i)
+        if !(depot_id in component) && length(component) > 1
+#          println(component)
+          componentCustomers = [i for i in C if i in component]
+          cutArcs = [x´[k, a] for j in component for a in δ⁺(j) if !(a[2] in component)]
+          for i in componentCustomers
+            customerInArcs = [x´[k, a] for a in δ⁻(i) if a[1] in component]
+            lhs_vars = vcat(cutArcs, customerInArcs)
+            lhs_coeff = vcat([1.0 for a in cutArcs], [-1.0 for a in customerInArcs])
+            if corte
+              @usercut(cb, sum(lhs_vars[i] * lhs_coeff[i] for i in 1:length(lhs_vars)) >= 0.0)
+              unsafe_store!(cb.userinteraction_p, convert(Cint,2), 1)
+            else
+              @lazyconstraint(cb, sum(lhs_vars[i] * lhs_coeff[i] for i in 1:length(lhs_vars)) >= 0.0)
+            end
+          end
+        end
+      end
+    end
+  end
+  function separa_corte(cb)
+    separa(cb, true)
+  end
+  addcutcallback(vrp, separa_corte)
+  function separa_restr(cb)
+    separa(cb, false)
+  end
+  addlazycallback(vrp, separa_restr)
+  solve(vrp)
+  println("DFS")
+  #get routes
+  x´´ = [Set{Tuple{Int64,Int64}}(a for a in A´ if getvalue(x´[k, a]) > 0.5) for k in M]
+  function dfs(route::Array{Int64}, routeArcs::Set{Tuple{Int64,Int64}}, i::Int64)
+    if i == depot_id && length(routeArcs) == 0
+      return true
+    end
+    for a in δ⁺(i)
+      if a in routeArcs
+        j = a[2]
+        if j in keys(afss_pairs)
+          push!(route, getAFSTreePath(afss_pairs[j]..., directedData.gvrp_afs_tree)...)
+        else
+          push!(route, j)
+        end
+        delete!(routeArcs, a)
+        if dfs(route, routeArcs, a[2])
+          return true
+        end
+        if j in keys(afss_pairs)
+          for v in getAFSTreePath(afss_pairs[j]..., directedData.gvrp_afs_tree)
+            pop!(route)
+          end
+        else
+          pop!(route)
+        end
+        push!(routeArcs, a)
+      end
+    end
+    return false
+  end
+  for k in M
+    route = [depot_id]
+    dfs(route, x´´[k], depot_id)
+    if length(route) > 2
+      push!(routes, route)
+    end
+  end
+  
+  # return solution 
+  for route in routes
+    n = length(route)
+    for i in 2:n
+      objval = objval + d(data, ed(route[i - 1], route[i]))
+    end
+  end
+  return Solution(objval, routes)
 end
 
 # build Solution for the y compact model 

@@ -9,7 +9,7 @@ mutable struct Vertex
     weight::Float64
 end
 
-# Directed graph
+# undirected graph
 mutable struct InputGraph
     V′::Array{Vertex} # set of vertices
     E::Array{Tuple{Int64,Int64}} # set of edges

@@ -84,14 +84,16 @@ function run_gvrp(app::Dict{String,Any})
   solution_found = false
   if !app["nosolve"]
     if app["model-type"] == "compacted-with-arcs"
-      (model, x, afss_pairs) = build_model_compact_with_arcs(data)
+      data.non_consec && error("The model compacted-with-arcs only can be executed without non_consec flag")
+      (directedData, model, x, afss_pairs) = build_model_compact_with_arcs(data)
       optimizer = VrpOptimizer(model, app["cfg"], instance_name)
       set_cutoff!(optimizer, app["ub"])
       (status, solution_found) = optimize!(optimizer)
       if solution_found
-        sol = getsolution_compact_with_arcs(data, optimizer, x, get_objective_value(optimizer), app, afss_pairs)
+        sol = getsolution_compact_with_arcs(data, directedData, optimizer, x, get_objective_value(optimizer), app, afss_pairs)
       end
     elseif app["model-type"] == "compact-y"
+      data.non_consec && error("The model compact-y only can be executed without non_consec flag")
       (model, P, x, y) = build_model_compact_y(data)
       optimizer = VrpOptimizer(model, app["cfg"], instance_name)
       set_cutoff!(optimizer, app["ub"])
