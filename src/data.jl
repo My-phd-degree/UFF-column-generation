@@ -92,6 +92,7 @@ function read_Andelmin_Bartolini_Instance(app::Dict{String,Any})
         end
       end
     end
+    data.β = data.β * data.ρ
     data.G′.V′[1].id_vertex = 1
     i = 2
     for f in FVertices
@@ -200,7 +201,7 @@ function readEMHInstance(app::Dict{String,Any})
       end
     end
     data.gvrp_afs_tree = calculateGVRP_AFS_Tree(data)
-    data.reduced_graph = calculateGVRPReducedGraphTime(data)
+#    data.reduced_graph = calculateGVRPReducedGraphTime(data)
     return data
 end
 
