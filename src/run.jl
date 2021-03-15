@@ -19,7 +19,7 @@ function parse_commandline(args_array::Array{String,1}, appfolder::String)
         "instance"
             help = "Instance file path"
         "--model-type"
-        help = "Instance edges preprocessings (normal, compacted-with-arcs, y (only for non-consec instances), compacted-y)"
+        help = "Model type (normal, compacted-with-arcs, y (only for non-consec instances), compacted-y)"
             default = "normal"
         "--preprocessings"
             help = "Instance edges preprocessings"

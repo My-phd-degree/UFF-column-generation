@@ -193,14 +193,68 @@ function readEMHInstance(app::Dict{String,Any})
     # create edges
     for i in vertices(data)
       for j in vertices(data) # add arcs between vertices
-        if i < j && !((i, j) in invalidEdges)
+        if i < j
           e = (i, j)
           push!(G′.E, e) # add edge e
           data.G′.cost[e] = distance(data, e)
         end
       end
     end
+    #remove infeasible customers
     data.gvrp_afs_tree = calculateGVRP_AFS_Tree(data)
+    fuel = f
+    infeasibleCustomers = Set{Int64}()
+    for i in data.C
+      feasible = false
+      for f in data.gvrp_afs_tree.F0
+        for r in data.gvrp_afs_tree.F0
+          if f <= r &&
+            fuel(data, ed(f, i)) + fuel(data, ed(i, r)) <= data.β && 
+            data.gvrp_afs_tree.times[f] + t(data, ed(f, i)) + t(data, ed(i, r)) + data.gvrp_afs_tree.times[r] <= data.T
+            feasible = true
+            break 
+          end
+        end
+        feasible && break
+      end
+      !feasible && push!(infeasibleCustomers, i)
+    end
+    #create new graph
+    if !isempty(infeasibleCustomers)
+      G′ = InputGraph([data.G′.V′[1]], [], Dict{Tuple{Int64,Int64},Float64}())
+      C = []
+      F = []
+      #insert customers
+      id = 2
+      for i in data.C
+        if !in(i, infeasibleCustomers)
+          data.G′.V′[i].id_vertex = id
+          push!(C, id)
+          push!(G′.V′, data.G′.V′[i])
+          id = id + 1
+        end
+      end
+      #insert AFSs
+      for i in data.F
+        data.G′.V′[i].id_vertex = id
+        push!(F, id)
+        push!(G′.V′, data.G′.V′[i])
+        id = id + 1
+      end
+      data.G′ = G′
+      data.C = C
+      data.F = F
+      # create edges
+      for i in vertices(data)
+        for j in vertices(data) # add arcs between vertices
+          if i < j
+            e = (i, j)
+            push!(G′.E, e) # add edge e
+            data.G′.cost[e] = distance(data, e)
+          end
+        end
+      end
+    end
 #    data.reduced_graph = calculateGVRPReducedGraphTime(data)
     return data
 end
@@ -315,4 +369,7 @@ end
 # return endering arcs of i
 function δ⁺(data::DataGVRP, i::Integer)
   return [(j, k) for (j, k) in data.G′.E if j == i]
+end
+
+function removeInfeasibleCustomers(data::DataGVRP)
 end
