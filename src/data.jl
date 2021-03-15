@@ -55,7 +55,7 @@ contains(p, s) = findnext(s, p, 1) != nothing
 
 function read_Andelmin_Bartolini_Instance(app::Dict{String,Any})
     data = DataGVRP(InputGraph([], [], Dict{Tuple{Int64, Int64},Float64}()), 1, true, false, false, [], [], 0.0, 0.0, 0.0, 0.0, Dict{Tuple{Int64, Int64}, Float64}(), nothing)
-    haskey(app, "non-consec") && error("The instances of Andelmin and Bartolini requires edges between AFSs")
+    haskey(app, "non-consec") && app["non-consec"] && error("The instances of Andelmin and Bartolini requires edges between AFSs")
     sepChar = ' '
     FVertices = []
     CVertices = []
