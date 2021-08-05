@@ -9,9 +9,10 @@ function calculateGvrpLBByControlZone(data::DataGVRP, S₀::Array{Int64})
                                  CPX_PARAM_MIPDISPLAY=0,
                                  CPX_PARAM_SCRIND=0
                                 ))
+  E = [ed(i, j) for i in S₀ for j in S₀ if i < j]
   @variable(M, r[j in S₀] >= 0)
   @objective(M, Max, sum(2 * r[j] for j in S₀))
-  @constraint(M, edge_capacity[(i, j) in keys(data.reduced_graph)], r[i] + r[j] <= data.reduced_graph[(i, j)])
+  @constraint(M, edge_capacity[(i, j) in E], r[i] + r[j] <= data.reduced_graph[(i, j)])
   solve(M)
   return getobjectivevalue(M)
 end
@@ -32,7 +33,7 @@ function calculateClosestsCustomers(data::DataGVRP, S₀::Array{Int64})
       end
     end
     η[i] = closest
-    pi[i] = secondClosest
+    pi[i] = secondClosest == typemax(Float64) ? η[i] : secondClosest
   end
   return η, pi
 end
@@ -169,6 +170,10 @@ end
 
 function calculateGVRP_NRoutesLB(data::DataGVRP, S₀::Array{Int64})
   η, pi  = calculateClosestsCustomers(data, S₀)
-  return max(calculateGVRP_BPP_NRoutesLB(data, S₀, η, pi), ceil(calculateGvrpLBByImprovedMST(data, S₀, η, pi)/data.T))
+  return max(
+    calculateGVRP_BPP_NRoutesLB(data, S₀, η, pi),
+    floor(ceil(calculateGvrpLBByImprovedMST(data, S₀, η, pi)/data.T)),
+    ceil(calculateGvrpLBByControlZone(data, S₀)/data.T)
+  )
 end
 

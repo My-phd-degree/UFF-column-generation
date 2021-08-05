@@ -39,7 +39,6 @@ function build_model_compact_y(data::DataGVRP)
           (!(ed(i, f) in E) || fuel(data, ed(i, f)) > β) && continue
           for r in F
             (!(ed(r, j) in E) || fuel(data, ed(r, j)) > β) && continue
-
             for f′ in F₀
               ((!(ed(f′, i) in E) && f′ != depot_id) || fuel(data, ed(f′, i)) + fuel(data, ed(i, f)) > β) && continue
               mayBeUsed = false
@@ -276,11 +275,14 @@ function build_model_compact_y(data::DataGVRP)
     for i in C₀
       for j in C₀
         if i < j
-          value::Float64 = sum(get_value(gvrp.optimizer, y[p]) for p in δ′′(P, i, j)) + (ed(i, j) in EC₀ ? get_value(gvrp.optimizer, x[ed(i, j)]) : 0.0)
-          if value > 0.0001
-            flow_::Int = trunc(floor(value, digits=5) * M)
-            push!(g, SparseMaxFlowMinCut.ArcFlow(i, j, flow_)) # arc i -> j
-            push!(g, SparseMaxFlowMinCut.ArcFlow(j, i, flow_)) # arc j -> i
+          paths = δ′′(P, i, j)
+          if !isempty(paths)
+            value::Float64 = sum(get_value(gvrp.optimizer, y[p]) for p in paths) + (ed(i, j) in EC₀ ? get_value(gvrp.optimizer, x[ed(i, j)]) : 0.0)
+            if value > 0.0001
+              flow_::Int = trunc(floor(value, digits=5) * M)
+              push!(g, SparseMaxFlowMinCut.ArcFlow(i, j, flow_)) # arc i -> j
+              push!(g, SparseMaxFlowMinCut.ArcFlow(j, i, flow_)) # arc j -> i
+            end
           end
         end
       end

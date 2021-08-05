@@ -422,6 +422,81 @@ function readsolution(app::Dict{String,Any})
   return sol
 end
 
+function read_Andelmin_Bartolini_Solution(app::Dict{String,Any}, data::DataGVRP)
+  str = read(app["sol"], String)
+  breaks_in = [' '; ':'; '\n';'\t';'\r']
+  aux = split(str, breaks_in; limit=0, keepempty=false)
+  sol = Solution(0, [])
+  route = []
+  j = 1
+  # get number of routes
+  nRoutes = parse(Int, aux[j])
+  j += 1
+  for i in 1:nRoutes
+    # get number of customers
+    nNodes = parse(Int, aux[j])
+    j += 1
+    # get number of AFS
+    nNodes += parse(Int, aux[j])
+    j += 1
+    # depot 
+    push!(route, data.depot_id)
+    j += 1
+    # get nodes
+    for k in 2:nNodes
+      node = parse(Int, aux[j])
+      j += 1
+      if node < 0
+        # AFS
+        push!(route, abs(node) + 2)
+        sol.cost += d(data, ed(route[end - 1], route[end]))
+      elseif node == 0
+        # depot 
+        push!(route, data.depot_id)
+        sol.cost += d(data, ed(route[end - 1], route[end]))
+        # new route
+        push!(sol.routes, route)
+        push!(route, data.depot_id)
+        route = []
+      else
+        #customer
+        push!(route, length(data.F) + 1 + node)
+        sol.cost += d(data, ed(route[end - 1], route[end]))
+      end
+    end
+    j += 1
+    # end route
+    push!(route, data.depot_id)
+    sol.cost += d(data, ed(route[end - 1], route[end]))
+    # new route
+    push!(sol.routes, route)
+    route = []
+  end
+
+# while j <= length(aux)
+#   r = []
+#   while j <= length(aux)
+#     push!(r, parse(Int, aux[j]))
+#     j += 1
+#     if contains(lowercase(aux[j]), "cost") || contains(lowercase(aux[j]), "route")
+#       break
+#     end
+#   end
+#   push!(sol.routes, r)
+#   if contains(lowercase(aux[j]), "cost")
+#     if app["noround"]
+#       sol.cost = parse(Float64, aux[j + 1])
+#     else
+#       sol.cost = parse(Int, aux[j + 1])
+#     end
+#     return sol
+#   end
+#   j += 2 # skip "Route" and "#j:" elements
+# end
+# error("The solution file was not read successfully.")
+ return sol
+end
+
 # write solution in a file
 function writesolution(solpath::String, data::DataGVRP, solution::Solution)
   open(solpath, "w") do f

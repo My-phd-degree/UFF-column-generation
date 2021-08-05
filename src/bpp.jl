@@ -7,8 +7,8 @@ end
 
 function solveBPP(dataBPP::DataBPP)
   M = Model(solver = CplexSolver(
-#                                 CPX_PARAM_MIPDISPLAY=0,
-#                                 CPX_PARAM_SCRIND=0
+                                 CPX_PARAM_MIPDISPLAY=0,
+                                 CPX_PARAM_SCRIND=0
                                 ))
   n = length(dataBPP.items)
   Bins = 1:n

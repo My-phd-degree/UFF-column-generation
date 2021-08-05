@@ -117,8 +117,8 @@ function read_Andelmin_Bartolini_Instance(app::Dict{String,Any})
         end
       end
     end
-#    data.gvrp_afs_tree = calculateGVRP_AFS_Tree(data)
-#    data.reduced_graph = calculateGVRPReducedGraphTime(data)
+    data.gvrp_afs_tree = calculateGVRP_AFS_Tree(data)
+    data.reduced_graph = calculateGVRPReducedGraphTime(data)
 
 #   invalidEdges = vcat(get_invalid_edges_1(data), get_invalid_edges_2(data), get_invalid_edges_3(data), get_invalid_edges_4(data))
 #   data.G′.E = setdiff(data.G′.E, invalidEdges)
@@ -255,7 +255,7 @@ function readEMHInstance(app::Dict{String,Any})
         end
       end
     end
-#    data.reduced_graph = calculateGVRPReducedGraphTime(data)
+    data.reduced_graph = calculateGVRPReducedGraphTime(data)
     return data
 end
 
