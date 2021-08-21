@@ -1,0 +1,10 @@
+# If you want to use VRPSolver script to run this batch, comment lines for the docker call (starting with /CVRP/data) and uncomment lines below the VRPSolver script call (starting with data/).  
+# docker call requires all paths being container paths (e.g. /CVRP/data/A/A-n37-k5.vrp -m 5 -M 5 -u 670 -o /CVRP/sol/A-n37-k5.sol)  
+# VRPSolver script call requires that the paths (e.g. data/A/A-n37-k5.vrp -m 5 -M 5 -u 670 -o sol/A-n37-k5.sol) be relatives to the application directory  
+# Tip: after a batch execution, call 'grep statistics out/A.out -h | cut -c13-' to get the results as rows for a LaTeX table.  
+# docker run --rm -v /ABSOLUTE_PATH_TO_CVRP_APP:/CVRP bapdock /CVRP/src/run.jl -b /CVRP/A.batch &> out/A.out
+/GVRP/data/EMH/LargeVAInput_111c_21s.txt		--instance-type		EMH    --model-type normal  --out /GVRP/data/EMH/sol/LargeVAInput_111c_21s.txt
+/GVRP/data/EMH/LargeVAInput_111c_22s.txt		--instance-type		EMH    --model-type normal  --out /GVRP/data/EMH/sol/LargeVAInput_111c_22s.txt
+/GVRP/data/EMH/LargeVAInput_111c_24s.txt		--instance-type		EMH    --model-type normal  --out /GVRP/data/EMH/sol/LargeVAInput_111c_24s.txt
+/GVRP/data/EMH/LargeVAInput_111c_26s.txt		--instance-type		EMH    --model-type normal  --out /GVRP/data/EMH/sol/LargeVAInput_111c_26s.txt
+/GVRP/data/EMH/LargeVAInput_111c_28s.txt		--instance-type		EMH    --model-type normal  --out /GVRP/data/EMH/sol/LargeVAInput_111c_28s.txt
