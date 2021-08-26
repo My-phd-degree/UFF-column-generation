@@ -276,23 +276,22 @@ function build_model_compact_y(data::DataGVRP)
       for j in C₀
         if i < j
           paths = δ′′(P, i, j)
-          if !isempty(paths)
-            value::Float64 = sum(get_value(gvrp.optimizer, y[p]) for p in paths) + (ed(i, j) in EC₀ ? get_value(gvrp.optimizer, x[ed(i, j)]) : 0.0)
-            if value > 0.0001
-              flow_::Int = trunc(floor(value, digits=5) * M)
-              push!(g, SparseMaxFlowMinCut.ArcFlow(i, j, flow_)) # arc i -> j
-              push!(g, SparseMaxFlowMinCut.ArcFlow(j, i, flow_)) # arc j -> i
-            end
+          value::Float64 = (!isempty(paths) ? sum(get_value(gvrp.optimizer, y[p]) for p in paths) : 0) + (ed(i, j) in EC₀ ? get_value(gvrp.optimizer, x[ed(i, j)]) : 0.0)
+          if value > 0.0001
+            flow_::Int = trunc(floor(value, digits=5) * M)
+            push!(g, SparseMaxFlowMinCut.ArcFlow(i, j, flow_)) # arc i -> j
+            push!(g, SparseMaxFlowMinCut.ArcFlow(j, i, flow_)) # arc j -> i
           end
         end
       end
     end
-
-    added_cuts = []
+    n = length(C₀)
     s = data.depot_id
+    added_cuts = []
     for c in C
       maxFlow, flows, cut = SparseMaxFlowMinCut.find_maxflow_mincut(SparseMaxFlowMinCut.Graph(n, g), s, c)
       if (maxFlow / M) < (2 - 0.001) && !in(cut, added_cuts)
+        println("$s -> $c = $(maxFlow / M) $maxFlow ")
         set1, set2 = [], []
         [cut[i] == 1 ? push!(set1, i) : push!(set2, i) for i in 1:n]
         println(set1, "\\", set2)
