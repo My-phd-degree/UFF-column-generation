@@ -51,19 +51,21 @@ function build_model(data::DataGVRP)
   end
   @constraint(gvrp.formulation, y[F₀[1]] >= 1)
 
-
-  #  routes = [
-  #           [0, 12, 5, 10, 39, 10, 49, 9, 50, 38, 50, 21, 2, 0],
-  #           [0, 6, 23, 48, 23, 7, 23, 24, 23, 0],
-  #           [0, 32, 31, 8, 31, 28, 31, 26, 31, 1, 32, 27, 0],
-  #           [0, 18, 13, 41, 40, 19, 42, 19, 4, 18, 0],
-  #           [0, 32, 22, 2, 35, 3, 35, 36, 35, 20, 2, 29, 2, 0, ],
-  #           [0, 12, 37, 12, 17, 12, 47, 18, 25, 18, 14, 18, 0],
-  #           [0, 46, 12, 45, 15, 44, 45, 33, 10, 30, 34, 50, 16, 11, 32, 0],
-  #          ]
+#=
+  routes = [
+            [0, 6 , 30, 18, 15, 46, 25, 24],
+            [0, 43, 3 , 34, 14, 13, 5],
+            [0, 2 , 44, 39, 40, 2],
+            [0, 9 , 32, 12, 16, 17, 41, 8, 37],
+            [0, 13, 48, 36, 7 , 47, 35],
+            [0, 19, 50, 22, 21, 45, 23, 29, 4],
+            [0, 31, 1 , 27, 13],
+            [0, 11, 42, 33, 21, 20, 38],
+            [0, 49, 26, 28, 10, 3],
+           ]
+=#
 
   if @isdefined routes
-    print
     ids = Dict{Int,Int}()
     ids_ = Dict{Int,Int}()
     for route in routes
@@ -85,6 +87,7 @@ function build_model(data::DataGVRP)
     end
     edgesWeights = Dict{Tuple{Int64, Int64},Int64}()
     for route in routes
+      println([ids[route[i]] for i in 1:length(route)])
       for i in 2:length(route)
         e = ed(ids[route[i]], ids[route[i - 1]])
         if haskey(edgesWeights, e)
@@ -236,7 +239,8 @@ function build_model(data::DataGVRP)
         # constant LB routes
         setIn = c in set1 ? set1 : set2
         S₀ = vcat([data.depot_id], [i for i in setIn if i in C])
-        nRoutesLB = calculateGVRP_NRoutesLB(data, S₀)
+#        nRoutesLB = calculateGVRP_NRoutesLB(data, S₀)
+        nRoutesLB = 1
         lhs_vars = [x[ed(i, j)] for i in S₀ for j in V if !in(j, S₀) && ed(i, j) in E]
         lhs_coeff = [1.0 for i in S₀ for j in V if !in(j, S₀) && ed(i, j) in E]
         add_dynamic_constr!(gvrp.optimizer, lhs_vars, lhs_coeff, >=, 2.0 * nRoutesLB, "mincut")

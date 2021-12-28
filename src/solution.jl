@@ -362,7 +362,6 @@ function checksolution(data::DataGVRP, solution)
   nTimesCustomersVisited = Dict{Int64, Int64}([i => 0 for i in data.C])
   routes = solution.routes
   for route in routes
-    println(route)
     n = length(route)
     n == 0 && error("Route is empty")
     route[1] != 1 && error("Route does not begins at the depot")
@@ -372,7 +371,6 @@ function checksolution(data::DataGVRP, solution)
       a, b = route[i - 1], route[i]
       #update resources
       consumedFuel = consumedFuel + f(data, ed(a, b))
-      #      consumedTime = consumedTime + t(data, ed(a, b))
       consumedTime = consumedTime + t(data, ed(a, b))
       #error checking
       consumedFuel > data.β && error("No fuel in $b: $consumedFuel")
@@ -385,6 +383,7 @@ function checksolution(data::DataGVRP, solution)
         nTimesCustomersVisited[b] > 1 && error("Customer $b visited more than once")
       end
     end
+    println(route, " ", consumedTime, "/", data.T, " ", consumedFuel, "/", data.β)
   end
   for i in data.C
     nTimesCustomersVisited[i] == 0 && error("Customer $(data.G′.V′[i].id_vertex) is not being visited")

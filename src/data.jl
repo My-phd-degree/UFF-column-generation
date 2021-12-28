@@ -66,23 +66,16 @@ function read_Andelmin_Bartolini_Instance(app::Dict{String,Any})
       data.T = parse(Float64, aux[4])
       data.β = parse(Float64, aux[5])
       data.ε = parse(Float64, aux[6])
-      data.ρ = data.ε > 0.7 ? 0.2137 : 0.2 
+      data.ρ = data.ε > 1.7 ? 0.2137 : 0.2 
       CustomerServiceTime = parse(Float64, aux[7])
       FServiceTime = parse(Float64, aux[8])
       while !eof(f)
         # get vertex
         line = readline(f)
         aux = split(line, [' ']; limit=0, keepempty=false)
-        if length(aux) == 0
-          continue
-        elseif strip(line) == "Infeasible customers" 
-          if !eof(f)
-            line = readline(f)
-            ids = split(line, [' ']; limit=0, keepempty=false)
-            for id in ids
-              filter!(v->v.id_vertex ≠ parse(Int64, id), CVertices)
-            end
-          end
+        length(aux) == 0 && continue
+        if strip(line) == "Infeasible customers"
+          !eof(f) && [filter!(v->v.id_vertex ≠ parse(Int64, id), CVertices) for id in split(readline(f), [' ']; limit=0, keepempty=false)]
         elseif aux[2] == "d"
           push!(data.G′.V′, Vertex(parse(Int64, aux[1]), parse(Float64, aux[3]), parse(Float64, aux[4]), 0.0, 0.0))
         elseif aux[2] == "f"
@@ -117,8 +110,8 @@ function read_Andelmin_Bartolini_Instance(app::Dict{String,Any})
         end
       end
     end
-    data.gvrp_afs_tree = calculateGVRP_AFS_Tree(data)
-    data.reduced_graph = calculateGVRPReducedGraphTime(data)
+#    data.gvrp_afs_tree = calculateGVRP_AFS_Tree(data)
+#    data.reduced_graph = calculateGVRPReducedGraphTime(data)
 
 #   invalidEdges = vcat(get_invalid_edges_1(data), get_invalid_edges_2(data), get_invalid_edges_3(data), get_invalid_edges_4(data))
 #   data.G′.E = setdiff(data.G′.E, invalidEdges)

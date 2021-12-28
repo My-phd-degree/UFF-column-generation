@@ -24,11 +24,12 @@ function calculateClosestsCustomers(data::DataGVRP, S₀::Array{Int64})
     closest, secondClosest = typemax(Float64), typemax(Float64)
     for j in S₀
       if i != j
-        if data.reduced_graph[ed(i, j)] - (data.G′.V′[i].service_time + data.G′.V′[j].service_time)/2.0 < closest
+        cost = data.reduced_graph[ed(i, j)] - (data.G′.V′[i].service_time + data.G′.V′[j].service_time)/2.0
+        if cost < closest
           secondClosest = closest
-          closest = data.reduced_graph[ed(i, j)] - (data.G′.V′[i].service_time + data.G′.V′[j].service_time)/2.0
-        elseif data.reduced_graph[ed(i, j)]  - (data.G′.V′[i].service_time + data.G′.V′[j].service_time)/2.0 < secondClosest
-          secondClosest = data.reduced_graph[ed(i, j)] - (data.G′.V′[i].service_time + data.G′.V′[j].service_time)/2.0
+          closest = cost 
+        elseif cost < secondClosest
+          secondClosest = cost
         end
       end
     end
@@ -85,9 +86,11 @@ function calculateGvrpLBByImprovedMST(data::DataGVRP, S₀::Array{Int64}, η::Di
     MSTCost_ = MSTCost_ + data.reduced_graph[e] - (data.G′.V′[e[1]].service_time + data.G′.V′[e[2]].service_time)/2.0
 #    println("(", data.G′.V′[e[1]].id_vertex, ", ", data.G′.V′[e[2]].id_vertex, "): ", gvrpReducedGraph[e] - (data.G′.V′[e[1]].service_time + data.G′.V′[e[2]].service_time)/2.0)
   end
+  println("MST: ", MSTCost)
 #  println(MSTCost)
 #  println(MSTCost_)
 #  println()
+#  println("#Initial MST")
   #greedy boruvka
   for i in S₀
     cleanDSU(dsu)
@@ -157,8 +160,11 @@ function calculateGvrpLBByImprovedMST(data::DataGVRP, S₀::Array{Int64}, η::Di
 #      println("\tcurrent MST cost ", MSTCost)
       bestEdge = Dict{Int64, Tuple{Int64, Int64}}()
       bestEdgeCost = Dict{Int64, Float64}(i => typemax(Float64) for i in S₀)
-      bestLB = max(η[i] + pi[i] + MSTCost, bestLB)
     end
+    println("MST: ", MSTCost, " LB: ", η[i] + pi[i] + MSTCost)
+    bestLB = max(η[i] + pi[i] + MSTCost, bestLB)
+#    println("#Node $i iteration")
+#    println("\t$([e for e in adjMatrix])")
   end
   return bestLB + sum([data.G′.V′[i].service_time for i in data.C])
 end

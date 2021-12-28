@@ -76,8 +76,8 @@ function run_gvrp(app::Dict{String,Any})
   end
 
   if app["sol"] != nothing
-    sol = readsolution(app)
-    checksolution(data, sol, app) # checks the solution feasibility
+    sol = read_Andelmin_Bartolini_Solution(app, data)
+    checksolution(data, sol) # checks the solution feasibility
     app["ub"] = (sol.cost < app["ub"]) ? sol.cost : app["ub"] # update the upper bound if necessary
   end
 

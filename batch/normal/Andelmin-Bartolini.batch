@@ -1,40 +1,40 @@
-/GVRP/data/Andelmin-Bartolini/AB101.dat			--instance-type		Andelmin-Bartolini    --model-type normal
-/GVRP/data/Andelmin-Bartolini/AB102.dat			--instance-type		Andelmin-Bartolini    --model-type normal
-/GVRP/data/Andelmin-Bartolini/AB103.dat			--instance-type		Andelmin-Bartolini    --model-type normal
-/GVRP/data/Andelmin-Bartolini/AB104.dat			--instance-type		Andelmin-Bartolini    --model-type normal
-/GVRP/data/Andelmin-Bartolini/AB105.dat			--instance-type		Andelmin-Bartolini    --model-type normal
-/GVRP/data/Andelmin-Bartolini/AB106.dat			--instance-type		Andelmin-Bartolini    --model-type normal
-/GVRP/data/Andelmin-Bartolini/AB107.dat			--instance-type		Andelmin-Bartolini    --model-type normal
-/GVRP/data/Andelmin-Bartolini/AB108.dat			--instance-type		Andelmin-Bartolini    --model-type normal
-/GVRP/data/Andelmin-Bartolini/AB109.dat			--instance-type		Andelmin-Bartolini    --model-type normal
-/GVRP/data/Andelmin-Bartolini/AB110.dat			--instance-type		Andelmin-Bartolini    --model-type normal
-/GVRP/data/Andelmin-Bartolini/AB111.dat			--instance-type		Andelmin-Bartolini    --model-type normal
-/GVRP/data/Andelmin-Bartolini/AB112.dat			--instance-type		Andelmin-Bartolini    --model-type normal
-/GVRP/data/Andelmin-Bartolini/AB113.dat			--instance-type		Andelmin-Bartolini    --model-type normal
-/GVRP/data/Andelmin-Bartolini/AB114.dat			--instance-type		Andelmin-Bartolini    --model-type normal
-/GVRP/data/Andelmin-Bartolini/AB115.dat			--instance-type		Andelmin-Bartolini    --model-type normal
-/GVRP/data/Andelmin-Bartolini/AB116.dat			--instance-type		Andelmin-Bartolini    --model-type normal
-/GVRP/data/Andelmin-Bartolini/AB117.dat			--instance-type		Andelmin-Bartolini    --model-type normal
-/GVRP/data/Andelmin-Bartolini/AB118.dat			--instance-type		Andelmin-Bartolini    --model-type normal
-/GVRP/data/Andelmin-Bartolini/AB119.dat			--instance-type		Andelmin-Bartolini    --model-type normal
-/GVRP/data/Andelmin-Bartolini/AB120.dat			--instance-type		Andelmin-Bartolini    --model-type normal
-/GVRP/data/Andelmin-Bartolini/AB201.dat			--instance-type		Andelmin-Bartolini    --model-type normal
-/GVRP/data/Andelmin-Bartolini/AB202.dat			--instance-type		Andelmin-Bartolini    --model-type normal
-/GVRP/data/Andelmin-Bartolini/AB203.dat			--instance-type		Andelmin-Bartolini    --model-type normal
-/GVRP/data/Andelmin-Bartolini/AB204.dat			--instance-type		Andelmin-Bartolini    --model-type normal
-/GVRP/data/Andelmin-Bartolini/AB205.dat			--instance-type		Andelmin-Bartolini    --model-type normal
-/GVRP/data/Andelmin-Bartolini/AB206.dat			--instance-type		Andelmin-Bartolini    --model-type normal
-/GVRP/data/Andelmin-Bartolini/AB207.dat			--instance-type		Andelmin-Bartolini    --model-type normal
-/GVRP/data/Andelmin-Bartolini/AB208.dat			--instance-type		Andelmin-Bartolini    --model-type normal
-/GVRP/data/Andelmin-Bartolini/AB209.dat			--instance-type		Andelmin-Bartolini    --model-type normal
-/GVRP/data/Andelmin-Bartolini/AB210.dat			--instance-type		Andelmin-Bartolini    --model-type normal
-/GVRP/data/Andelmin-Bartolini/AB211.dat			--instance-type		Andelmin-Bartolini    --model-type normal
-/GVRP/data/Andelmin-Bartolini/AB212.dat			--instance-type		Andelmin-Bartolini    --model-type normal
-/GVRP/data/Andelmin-Bartolini/AB213.dat			--instance-type		Andelmin-Bartolini    --model-type normal
-/GVRP/data/Andelmin-Bartolini/AB214.dat			--instance-type		Andelmin-Bartolini    --model-type normal
-/GVRP/data/Andelmin-Bartolini/AB215.dat			--instance-type		Andelmin-Bartolini    --model-type normal
-/GVRP/data/Andelmin-Bartolini/AB216.dat			--instance-type		Andelmin-Bartolini    --model-type normal
-/GVRP/data/Andelmin-Bartolini/AB217.dat			--instance-type		Andelmin-Bartolini    --model-type normal
-/GVRP/data/Andelmin-Bartolini/AB218.dat			--instance-type		Andelmin-Bartolini    --model-type normal
-/GVRP/data/Andelmin-Bartolini/AB219.dat			--instance-type		Andelmin-Bartolini    --model-type normal
-/GVRP/data/Andelmin-Bartolini/AB220.dat			--instance-type		Andelmin-Bartolini    --model-type normal
+/GVRP/data/Andelmin-Bartolini/AB101.dat			--instance-type		Andelmin-Bartolini    --model-type normal --out AB101.sol
+/GVRP/data/Andelmin-Bartolini/AB102.dat			--instance-type		Andelmin-Bartolini    --model-type normal --out AB102.sol
+/GVRP/data/Andelmin-Bartolini/AB103.dat			--instance-type		Andelmin-Bartolini    --model-type normal --out AB103.sol
+/GVRP/data/Andelmin-Bartolini/AB104.dat			--instance-type		Andelmin-Bartolini    --model-type normal --out AB104.sol
+/GVRP/data/Andelmin-Bartolini/AB105.dat			--instance-type		Andelmin-Bartolini    --model-type normal --out AB105.sol
+/GVRP/data/Andelmin-Bartolini/AB106.dat			--instance-type		Andelmin-Bartolini    --model-type normal --out AB106.sol
+/GVRP/data/Andelmin-Bartolini/AB107.dat			--instance-type		Andelmin-Bartolini    --model-type normal --out AB107.sol
+/GVRP/data/Andelmin-Bartolini/AB108.dat			--instance-type		Andelmin-Bartolini    --model-type normal --out AB108.sol
+/GVRP/data/Andelmin-Bartolini/AB109.dat			--instance-type		Andelmin-Bartolini    --model-type normal --out AB109.sol
+/GVRP/data/Andelmin-Bartolini/AB110.dat			--instance-type		Andelmin-Bartolini    --model-type normal --out AB110.sol
+/GVRP/data/Andelmin-Bartolini/AB111.dat			--instance-type		Andelmin-Bartolini    --model-type normal --out AB111.sol
+/GVRP/data/Andelmin-Bartolini/AB112.dat			--instance-type		Andelmin-Bartolini    --model-type normal --out AB112.sol
+/GVRP/data/Andelmin-Bartolini/AB113.dat			--instance-type		Andelmin-Bartolini    --model-type normal --out AB113.sol
+/GVRP/data/Andelmin-Bartolini/AB114.dat			--instance-type		Andelmin-Bartolini    --model-type normal --out AB114.sol
+/GVRP/data/Andelmin-Bartolini/AB115.dat			--instance-type		Andelmin-Bartolini    --model-type normal --out AB115.sol
+/GVRP/data/Andelmin-Bartolini/AB116.dat			--instance-type		Andelmin-Bartolini    --model-type normal --out AB116.sol
+/GVRP/data/Andelmin-Bartolini/AB117.dat			--instance-type		Andelmin-Bartolini    --model-type normal --out AB117.sol
+/GVRP/data/Andelmin-Bartolini/AB118.dat			--instance-type		Andelmin-Bartolini    --model-type normal --out AB118.sol
+/GVRP/data/Andelmin-Bartolini/AB119.dat			--instance-type		Andelmin-Bartolini    --model-type normal --out AB119.sol
+/GVRP/data/Andelmin-Bartolini/AB120.dat			--instance-type		Andelmin-Bartolini    --model-type normal --out AB120.sol
+/GVRP/data/Andelmin-Bartolini/AB201.dat			--instance-type		Andelmin-Bartolini    --model-type normal --out AB201.sol
+/GVRP/data/Andelmin-Bartolini/AB202.dat			--instance-type		Andelmin-Bartolini    --model-type normal --out AB202.sol
+/GVRP/data/Andelmin-Bartolini/AB203.dat			--instance-type		Andelmin-Bartolini    --model-type normal --out AB203.sol
+/GVRP/data/Andelmin-Bartolini/AB204.dat			--instance-type		Andelmin-Bartolini    --model-type normal --out AB204.sol
+/GVRP/data/Andelmin-Bartolini/AB205.dat			--instance-type		Andelmin-Bartolini    --model-type normal --out AB205.sol
+/GVRP/data/Andelmin-Bartolini/AB206.dat			--instance-type		Andelmin-Bartolini    --model-type normal --out AB206.sol
+/GVRP/data/Andelmin-Bartolini/AB207.dat			--instance-type		Andelmin-Bartolini    --model-type normal --out AB207.sol
+/GVRP/data/Andelmin-Bartolini/AB208.dat			--instance-type		Andelmin-Bartolini    --model-type normal --out AB208.sol
+/GVRP/data/Andelmin-Bartolini/AB209.dat			--instance-type		Andelmin-Bartolini    --model-type normal --out AB209.sol
+/GVRP/data/Andelmin-Bartolini/AB210.dat			--instance-type		Andelmin-Bartolini    --model-type normal --out AB210.sol
+/GVRP/data/Andelmin-Bartolini/AB211.dat			--instance-type		Andelmin-Bartolini    --model-type normal --out AB211.sol
+/GVRP/data/Andelmin-Bartolini/AB212.dat			--instance-type		Andelmin-Bartolini    --model-type normal --out AB212.sol
+/GVRP/data/Andelmin-Bartolini/AB213.dat			--instance-type		Andelmin-Bartolini    --model-type normal --out AB213.sol
+/GVRP/data/Andelmin-Bartolini/AB214.dat			--instance-type		Andelmin-Bartolini    --model-type normal --out AB214.sol
+/GVRP/data/Andelmin-Bartolini/AB215.dat			--instance-type		Andelmin-Bartolini    --model-type normal --out AB215.sol
+/GVRP/data/Andelmin-Bartolini/AB216.dat			--instance-type		Andelmin-Bartolini    --model-type normal --out AB216.sol
+/GVRP/data/Andelmin-Bartolini/AB217.dat			--instance-type		Andelmin-Bartolini    --model-type normal --out AB217.sol
+/GVRP/data/Andelmin-Bartolini/AB218.dat			--instance-type		Andelmin-Bartolini    --model-type normal --out AB218.sol
+/GVRP/data/Andelmin-Bartolini/AB219.dat			--instance-type		Andelmin-Bartolini    --model-type normal --out AB219.sol
+/GVRP/data/Andelmin-Bartolini/AB220.dat			--instance-type		Andelmin-Bartolini    --model-type normal --out AB220.sol
