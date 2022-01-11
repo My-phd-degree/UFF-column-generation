@@ -49,6 +49,7 @@ function calculateGvrpLBByImprovedMST(data::DataGVRP, S₀::Array{Int64}, η::Di
   bestEdge = Dict{Int64, Tuple{Int64, Int64}}()
   bestEdgeCost = Dict{Int64, Float64}(i => typemax(Float64) for i in S₀)
   while nTrees > 1 
+    println("nTrees $nTrees")
     #calculate best cuts
     for i in S₀
       setI = findSetDSU(dsu, i)
@@ -176,6 +177,8 @@ end
 
 function calculateGVRP_NRoutesLB(data::DataGVRP, S₀::Array{Int64})
   η, pi  = calculateClosestsCustomers(data, S₀)
+  println(floor(ceil(calculateGvrpLBByImprovedMST(data, S₀, η, pi)/data.T)))
+  println(ceil(calculateGvrpLBByControlZone(data, S₀)/data.T))
   return max(
     calculateGVRP_BPP_NRoutesLB(data, S₀, η, pi),
     floor(ceil(calculateGvrpLBByImprovedMST(data, S₀, η, pi)/data.T)),

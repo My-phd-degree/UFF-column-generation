@@ -51,6 +51,10 @@ function build_model(data::DataGVRP)
   end
   @constraint(gvrp.formulation, y[F₀[1]] >= 1)
 
+  invalidEdges = vcat(get_invalid_edges_1(data), get_invalid_edges_2(data), get_invalid_edges_3(data), get_invalid_edges_4(data))
+  [@constraint(gvrp.formulation, x[e] == 0) for e in invalidEdges]
+
+
 #=
   routes = [
             [0, 6 , 30, 18, 15, 46, 25, 24],
@@ -239,8 +243,10 @@ function build_model(data::DataGVRP)
         # constant LB routes
         setIn = c in set1 ? set1 : set2
         S₀ = vcat([data.depot_id], [i for i in setIn if i in C])
-#        nRoutesLB = calculateGVRP_NRoutesLB(data, S₀)
-        nRoutesLB = 1
+        println("Calculating routes LB for $(S₀)")
+        nRoutesLB = calculateGVRP_NRoutesLB(data, S₀)
+        println("LB = $nRoutesLB")
+#        nRoutesLB = 1
         lhs_vars = [x[ed(i, j)] for i in S₀ for j in V if !in(j, S₀) && ed(i, j) in E]
         lhs_coeff = [1.0 for i in S₀ for j in V if !in(j, S₀) && ed(i, j) in E]
         add_dynamic_constr!(gvrp.optimizer, lhs_vars, lhs_coeff, >=, 2.0 * nRoutesLB, "mincut")
@@ -305,7 +311,7 @@ function build_model(data::DataGVRP)
       n_k_path_cuts_time += 1
     end
   end
-  add_cut_callback!(gvrp, maxflow_mincut_time_callback, "mincuttime")
+#  add_cut_callback!(gvrp, maxflow_mincut_time_callback, "mincuttime")
   
   function fuel_callback()
     # solve model
@@ -351,6 +357,7 @@ function build_model(data::DataGVRP)
       n_energy_cuts += 1
     end
   end
-  add_cut_callback!(gvrp, fuel_callback, "fuel")
+#  add_cut_callback!(gvrp, fuel_callback, "fuel")
+
   return (gvrp, x, y)
 end
