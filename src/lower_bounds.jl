@@ -162,7 +162,7 @@ function calculateGvrpLBByImprovedMST(data::DataGVRP, S₀::Array{Int64}, η::Di
       bestEdge = Dict{Int64, Tuple{Int64, Int64}}()
       bestEdgeCost = Dict{Int64, Float64}(i => typemax(Float64) for i in S₀)
     end
-    println("MST: ", MSTCost, " LB: ", η[i] + pi[i] + MSTCost)
+#    println("MST: ", MSTCost, " LB: ", η[i] + pi[i] + MSTCost)
     bestLB = max(η[i] + pi[i] + MSTCost, bestLB)
 #    println("#Node $i iteration")
 #    println("\t$([e for e in adjMatrix])")

@@ -39,7 +39,7 @@ function calculateGVRPReducedGraphTime(data::DataGVRP)
     end
   end
   for p in keys(times)
-  println(p, " ", times[p])
+#  println(p, " ", times[p])
   end
   return times
 end

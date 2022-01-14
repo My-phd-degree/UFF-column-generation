@@ -93,7 +93,7 @@ function build_model(data::DataGVRP)
     end
     edgesWeights = Dict{Tuple{Int64, Int64},Int64}()
     for route in routes
-      println([ids[route[i]] for i in 1:length(route)])
+#      println([ids[route[i]] for i in 1:length(route)])
       for i in 2:length(route)
         e = ed(ids[route[i]], ids[route[i - 1]])
         if haskey(edgesWeights, e)
@@ -104,9 +104,9 @@ function build_model(data::DataGVRP)
       end 
     end
     for e in keys(edgesWeights)
-      println(f(data, e))
-      println(data.G′.V′[e[1]], " ", data.G′.V′[e[2]])
-      println("Edge $e; Edge weight $(edgesWeights[e]); EdgeId $(ed(ids_[e[1]], ids_[e[2]]))")
+#      println(f(data, e))
+#      println(data.G′.V′[e[1]], " ", data.G′.V′[e[2]])
+#      println("Edge $e; Edge weight $(edgesWeights[e]); EdgeId $(ed(ids_[e[1]], ids_[e[2]]))")
       @constraint(gvrp.formulation, x[e] == edgesWeights[e])
     end
   end
@@ -245,14 +245,14 @@ function build_model(data::DataGVRP)
         # constant LB routes
         setIn = c in set1 ? set1 : set2
         S₀ = vcat([data.depot_id], [i for i in setIn if i in C])
-        println("Calculating routes LB for $(S₀)")
+#        println("Calculating routes LB for $(S₀)")
         η, pi  = calculateClosestsCustomers(data, S₀)
         bpp_lb = calculateGVRP_BPP_NRoutesLB(data, S₀, η, pi)
         mst_lb = floor(Int64, (calculateGvrpLBByImprovedMST(data, S₀, η, pi)/data.T) + 0.5)
         nRoutesLB = max(bpp_lb, mst_lb)
         nRoutesLB == mst_lb && (global mst_count += 1)
         nRoutesLB == bpp_lb && (global bpp_count += 1)
-        println("LB = $nRoutesLB")
+#        println("LB = $nRoutesLB")
 #        nRoutesLB = 1
         lhs_vars = [x[ed(i, j)] for i in S₀ for j in V if !in(j, S₀) && ed(i, j) in E]
         lhs_coeff = [1.0 for i in S₀ for j in V if !in(j, S₀) && ed(i, j) in E]
