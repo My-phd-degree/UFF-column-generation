@@ -177,8 +177,6 @@ end
 
 function calculateGVRP_NRoutesLB(data::DataGVRP, S₀::Array{Int64})
   η, pi  = calculateClosestsCustomers(data, S₀)
-  println(floor(ceil(calculateGvrpLBByImprovedMST(data, S₀, η, pi)/data.T)))
-  println(ceil(calculateGvrpLBByControlZone(data, S₀)/data.T))
   return max(
     calculateGVRP_BPP_NRoutesLB(data, S₀, η, pi),
     floor(ceil(calculateGvrpLBByImprovedMST(data, S₀, η, pi)/data.T)),

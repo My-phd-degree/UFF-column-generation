@@ -332,8 +332,12 @@ function readMatheusInstance(app::Dict{String,Any})
         end
       end
     end
+
+    println("Calculating GVRP AFS Tree")
     data.gvrp_afs_tree = calculateGVRP_AFS_Tree(data)
+    println("Calculating reduced graph")
     data.reduced_graph = calculateGVRPReducedGraphTime(data)
+    println("Calculated")
 
     return data
 end

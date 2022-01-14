@@ -373,8 +373,8 @@ function checksolution(data::DataGVRP, solution)
       consumedFuel = consumedFuel + f(data, ed(a, b))
       consumedTime = consumedTime + t(data, ed(a, b))
       #error checking
-      consumedFuel > data.β && error("No fuel in $b: $consumedFuel")
-      consumedTime > data.T && error("Time exceeded in $b: $consumedTime")
+      consumedFuel > data.β + 1e-3 && error("No fuel in $b: $consumedFuel")
+      consumedTime > data.T + 1e-3 && error("Time exceeded in $b: $consumedTime")
       # restore fuel
       if b in data.F
         consumedFuel = 0

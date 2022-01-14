@@ -4,10 +4,12 @@ using CPLEX
 
 ed(i, j) = i < j ? (i, j) : (j, i)
 
+mst_count = 0
+bpp_count = 0
+
 function build_model(data::DataGVRP)
-  n_2_path_cuts_gh = 0
-  n_k_path_cuts_time = 0
-  n_energy_cuts = 0
+  global mst_count = 0
+  global bpp_count = 0
   E = edges(data) # set of edges of the input graph G′
   n = nb_vertices(data)
   V = [i for i in 1:n] # set of vertices of the input graph G′
@@ -244,7 +246,12 @@ function build_model(data::DataGVRP)
         setIn = c in set1 ? set1 : set2
         S₀ = vcat([data.depot_id], [i for i in setIn if i in C])
         println("Calculating routes LB for $(S₀)")
-        nRoutesLB = calculateGVRP_NRoutesLB(data, S₀)
+        η, pi  = calculateClosestsCustomers(data, S₀)
+        bpp_lb = calculateGVRP_BPP_NRoutesLB(data, S₀, η, pi)
+        mst_lb = floor(Int64, (calculateGvrpLBByImprovedMST(data, S₀, η, pi)/data.T) + 0.5)
+        nRoutesLB = max(bpp_lb, mst_lb)
+        nRoutesLB == mst_lb && (global mst_count += 1)
+        nRoutesLB == bpp_lb && (global bpp_count += 1)
         println("LB = $nRoutesLB")
 #        nRoutesLB = 1
         lhs_vars = [x[ed(i, j)] for i in S₀ for j in V if !in(j, S₀) && ed(i, j) in E]
@@ -252,112 +259,8 @@ function build_model(data::DataGVRP)
         add_dynamic_constr!(gvrp.optimizer, lhs_vars, lhs_coeff, >=, 2.0 * nRoutesLB, "mincut")
       end
     end
-    if length(added_cuts) > 0 
-      n_2_path_cuts_gh += length(added_cuts)
-      println(">>>>> Add min cuts : ", length(added_cuts), " cut(s) added") 
-    end
   end
   add_cut_callback!(gvrp, maxflow_mincut_callback, "mincut")
-
-  function maxflow_mincut_time_callback()
-    # solve model
-    M = Model(solver = CplexSolver(
-                                   CPX_PARAM_MIPDISPLAY=0,
-                                   CPX_PARAM_SCRIND=0
-                                  ))
-    @variable(M, 0 <= y[1:n] <= 1, Int)
-    @variable(M, 0 <= w[e in E] <= 1, Int)
-    @variable(M, 0 <= z[e in E] <= 1, Int)
-    x´ = Dict{Tuple{Int64,Int64},Float64}(e => get_value(gvrp.optimizer, x[e]) for e in E)
-    @objective(M, Max, 2 * sum(z[e] * x´[e] * t(data, e) for e in E)/T - sum(w[e] * x´[e] for e in E))
-    @constraint(M, update_z_1[e in E], z[e] >= y[e[1]])
-    @constraint(M, update_z_2[e in E], z[e] >= y[e[2]])
-    @constraint(M, update_z_3[(i, j) in E], y[i] + y[j] >= z[(i, j)])
-    @constraint(M, update_w_1[(i, j) in E], w[(i, j)] >= y[i] - y[j])
-    @constraint(M, update_w_2[(i, j) in E], w[(i, j)] >= y[j] - y[i])
-    @constraint(M, update_w_3[(i, j) in E], 2 - (y[i] + y[j]) >= w[(i, j)])
-    @constraint(M, update_w_4[(i, j) in E], y[i] + y[j] >= w[(i, j)])
-    @constraint(M, y[1] == 0 )
-    @constraint(M, sum(y[i] for i in C) >= 1)
-    solve(M)
-    # valid set
-    if getobjectivevalue(M) > 0.001
-      y´ = getvalue(y)
-      w´ = getvalue(w)
-      z´ = getvalue(z)
-      # get bipartition
-      setIn, setOut = [], []
-      cutEdges = [e for e in E if w´[e] > 0.5]
-      [y´[i] > 0.5 ? push!(setIn, i) : push!(setOut, i) for i in 1:n]
-      println(setIn, "\\", setOut)
-      # constant routes
-      setIn = c in set1 ? set1 : set2
-      S₀ = vcat([data.depot_id], [i for i in setIn if i in C])
-      nRoutesLB = calculateGVRP_NRoutesLB(data, S₀)
-      if sum(x´[e] for e in cutEdges) < nRoutesLB
-        lhs_vars = [x[ed(i, j)] for i in S₀ for j in V if !in(j, S₀) && ed(i, j) in E]
-        lhs_coeff = [1.0 for i in S₀ for j in V if !in(j, S₀) && ed(i, j) in E]
-        add_dynamic_constr!(gvrp.optimizer, lhs_vars, lhs_coeff, >=, 2.0 * nRoutesLB, "constant_subcycle")
-
-        lhs_vars = [x[e] for e in cutEdges]
-        lhs_coeff = [1.0 for e in cutEdges]
-        add_dynamic_constr!(gvrp.optimizer, lhs_vars, lhs_coeff, >=, 2.0 * nRoutesLB, "subcycle_time")
-      end
-      # variable routes
-      lhs_vars = vcat([x[e] for e in E if w´[e] > 0.5], [x[e] for e in E if z´[e] > 0.5])
-      lhs_coeff = vcat([1.0 for e in E if w´[e] > 0.5], [- t(data, e) * 2/T for e in E if z´[e] > 0.5])
-
-      add_dynamic_constr!(gvrp.optimizer, lhs_vars, lhs_coeff, >=, 0.0, "mincuttime")
-      n_k_path_cuts_time += 1
-    end
-  end
-#  add_cut_callback!(gvrp, maxflow_mincut_time_callback, "mincuttime")
-  
-  function fuel_callback()
-    # solve model
-    M = Model(solver = CplexSolver(
-                                   CPX_PARAM_MIPDISPLAY=0,
-                                   CPX_PARAM_SCRIND=0
-                                  ))
-    @variable(M, 0 <= y[V] <= 1, Int)
-    @variable(M, 0 <= w[e in E] <= 1, Int)
-    @variable(M, 0 <= z[e in E] <= 1, Int)
-    x´ = Dict{Tuple{Int64,Int64},Float64}(e => get_value(gvrp.optimizer, x[e]) for e in E)
-    @objective(M, Max, sum(z[e] * x´[e] * f(data, e) for e in E) - (β/2) * sum(w[e] * x´[e] for e in E))
-    @constraint(M, update_z_1[e in E], z[e] >= y[e[1]])
-    @constraint(M, update_z_2[e in E], z[e] >= y[e[2]])
-    @constraint(M, update_z_3[(i, j) in E], y[i] + y[j] >= z[(i, j)])
-    @constraint(M, update_w_1[(i, j) in E], w[(i, j)] >= y[i] - y[j])
-    @constraint(M, update_w_2[(i, j) in E], w[(i, j)] >= y[j] - y[i])
-    @constraint(M, update_w_3[(i, j) in E], 2 - (y[i] + y[j]) >= w[(i, j)])
-    @constraint(M, update_w_4[(i, j) in E], y[i] + y[j] >= w[(i, j)])
-    @constraint(M, y[data.depot_id] == 0 )
-    @constraint(M, sum(y[i] for i in V if !in(i, C)) == 0)
-    @constraint(M, sum(y[i] for i in C) >= 1)
-    solve(M)
-    # valid set
-    if getobjectivevalue(M) > 0.001
-      y´ = getvalue(y)
-      w´ = getvalue(w)
-      z´ = getvalue(z)
-      setIn = [y´[i] > 0.5 for i in C]
-      cutEdges = [e for e in E if w´[e] > 0.5]
-      println(setIn)
-      # fuel
-      lhs_vars = vcat([x[e] for e in E if z´[e] > 0.5], [x[e] for e in cutEdges])
-      lhs_coeff = vcat([f(data, e) for e in E if z´[e] > 0.5], [- β/2 for e in cutEdges])
-      add_dynamic_constr!(gvrp.optimizer, lhs_vars, lhs_coeff, <=, 0.0, "fuel")
-      # routes
-      nRoutesLB = calculateGVRP_NRoutesLB(data, vcat([data.depot_id], [i for i in C if y´[i] > 0.5]))
-      if sum(x´[e] for e in cutEdges) < nRoutesLB
-        lhs_vars = [x[e] for e in cutEdges]
-        lhs_coeff = [1.0 for e in cutEdges]
-        add_dynamic_constr!(gvrp.optimizer, lhs_vars, lhs_coeff, >=, 2.0 * nRoutesLB, "subcycle_fuel")
-      end
-      n_energy_cuts += 1
-    end
-  end
-#  add_cut_callback!(gvrp, fuel_callback, "fuel")
 
   return (gvrp, x, y)
 end
